@@ -1,22 +1,47 @@
 'use client'
 
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function SignIn() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/generate')
+    }
+  }, [status, router])
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-lg text-gray-700 font-medium">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-2xl p-10 max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            AI 알림장 도우미 ✨
-          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <span className="text-4xl">🌼</span>
+            <h1 className="text-4xl font-bold text-gray-900">
+              알도AI
+            </h1>
+          </div>
           <p className="text-lg text-gray-700 font-medium">
             로그인하여 시작하세요
           </p>
         </div>
 
         <button
-          onClick={() => signIn('google', { callbackUrl: '/' })}
+          onClick={() => signIn('google', { callbackUrl: '/generate' })}
           className="w-full bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-900 font-bold py-4 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center justify-center gap-3 text-base"
         >
           <svg className="w-6 h-6" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
