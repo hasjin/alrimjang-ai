@@ -1,74 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import Anthropic from '@anthropic-ai/sdk'
+import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit'
+import { DOCUMENT_TYPE_INFO, DocumentType } from '@/lib/document-prompts'
+import pool from '@/lib/db'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
 interface RequestBody {
+  documentType: DocumentType
+  childId?: number
   childName: string
-  category: string
-  memo: string
+  inputData: Record<string, any>
   style: string
+  tone?: string
+  targetType?: string
+  isRegenerate?: boolean
 }
 
 export async function POST(req: NextRequest) {
   try {
+    // 인증 확인
+    const session = await getServerSession(authOptions)
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
     const body: RequestBody = await req.json()
-    const { childName, category, memo, style } = body
+    const { documentType, childId, childName, inputData, style, tone, targetType, isRegenerate } = body
 
     // 입력 검증
-    if (!childName || !category || !memo || !style) {
+    if (!documentType || !childName || !inputData || !style) {
       return NextResponse.json(
         { error: '모든 필드를 입력해주세요.' },
         { status: 400 }
       )
     }
 
-    // 개인정보 보호를 위한 익명화 (로그에는 익명으로 표시)
-    const anonymizedName = '아이'
-
-    // 카테고리별 프롬프트 가이드
-    const categoryGuides: Record<string, string> = {
-      '화장실': '배변 훈련의 성장 과정, 자기 표현 능력, 독립심 발달',
-      '식사': '식습관, 음식 탐구, 영양 섭취, 사회성 발달',
-      '놀이활동': '창의력, 사회성, 신체 발달, 정서 표현',
-      '현장학습': '호기심, 탐구력, 새로운 경험, 사회 적응력'
+    // 문서 타입 유효성 검증
+    if (!DOCUMENT_TYPE_INFO[documentType]) {
+      return NextResponse.json(
+        { error: '유효하지 않은 문서 타입입니다.' },
+        { status: 400 }
+      )
     }
 
-    const styleGuide = style === '간결형'
-      ? '2-3문장으로 핵심만 간결하게 작성해주세요.'
-      : '4-5문장으로 구체적이고 상세하게 작성해주세요.'
+    // 사용량 제한 확인 (재생성 첫 회는 무료)
+    let rateLimitResult
+    if (!isRegenerate) {
+      rateLimitResult = await checkRateLimit(session.user.id)
+      if (!rateLimitResult.allowed) {
+        return NextResponse.json(
+          {
+            error: '일일 생성 횟수를 초과했습니다.',
+            remaining: 0,
+            resetAt: rateLimitResult.resetAt.toISOString(),
+          },
+          { status: 429 }
+        )
+      }
+    } else {
+      // 재생성이어도 현재 사용량 정보는 필요
+      rateLimitResult = await checkRateLimit(session.user.id)
+    }
+
+    // 문서 타입별 프롬프트 생성
+    const promptFn = DOCUMENT_TYPE_INFO[documentType].promptFn
+    const prompt = promptFn({
+      childName,
+      inputData,
+      style,
+      tone: tone || '균형',
+      targetType: targetType || '개인',
+    })
 
     // Claude API 호출
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: 'user',
-          content: `당신은 따뜻하고 경험 많은 어린이집 선생님입니다. 부모님께 보낼 알림장을 작성해주세요.
-
-**아이 정보:**
-- 이름: ${anonymizedName}
-- 카테고리: ${category}
-- 오늘의 기록: ${memo}
-
-**작성 가이드:**
-- 톤: 따뜻하고 감성적이며, 부모님이 공감할 수 있는 톤
-- 스타일: ${styleGuide}
-- 구조:
-  1. 오늘 있었던 구체적인 행동 묘사
-  2. 그 행동이 가진 발달적 의미 설명
-  3. 부모님께 전하고 싶은 따뜻한 메시지
-- 카테고리 포인트: ${categoryGuides[category]}
-- 이모지: 적절하게 2-3개 사용 (🌟😊💖✨👏🎉 등)
-- 주의사항:
-  - 실제 아이 이름은 "${childName}"으로 자연스럽게 포함
-  - 과장하지 말고 진정성 있게
-  - 부모님의 마음에 와닿는 표현 사용
-
-알림장을 작성해주세요. 인사말이나 다른 설명 없이 알림장 내용만 작성해주세요.`
+          content: prompt,
         }
       ],
     })
@@ -78,8 +97,25 @@ export async function POST(req: NextRequest) {
       throw new Error('Unexpected response type')
     }
 
+    // 성공 시 사용량 증가 (재생성 첫 회는 제외)
+    if (!isRegenerate) {
+      await incrementRateLimit(session.user.id)
+    }
+
+    // 문서 생성 이력 저장
+    try {
+      await pool.query(
+        'INSERT INTO alrimjang.documents (user_id, child_id, document_type, child_name, input_data, generated_content) VALUES ($1, $2, $3, $4, $5, $6)',
+        [session.user.id, childId || null, documentType, childName, JSON.stringify(inputData), result.text.trim()]
+      )
+    } catch (historyError) {
+      console.error('Failed to save document:', historyError)
+      // 이력 저장 실패해도 생성된 결과는 반환
+    }
+
     return NextResponse.json({
-      message: result.text.trim()
+      message: result.text.trim(),
+      remaining: isRegenerate ? rateLimitResult.remaining : rateLimitResult.remaining - 1,
     })
 
   } catch (error: unknown) {
@@ -93,7 +129,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: '알림장 생성 중 오류가 발생했습니다.' },
+      { error: '문서 생성 중 오류가 발생했습니다.' },
       { status: 500 }
     )
   }

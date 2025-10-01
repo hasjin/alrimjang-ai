@@ -4,10 +4,18 @@ import Link from 'next/link'
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 py-8">
+      <div className="container mx-auto px-4 max-w-4xl">
+        {/* 헤더 */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-4xl">🔒</span>
+            <h1 className="text-4xl font-bold text-gray-900">개인정보 처리방침</h1>
+          </div>
+          <p className="text-gray-600 ml-16">알도AI 개인정보 처리방침을 안내합니다</p>
+        </div>
+
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-8">개인정보 처리방침</h1>
 
           <div className="space-y-8 text-gray-800 leading-relaxed">
             <section>

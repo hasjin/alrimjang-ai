@@ -1,12 +1,12 @@
 import { AuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import { Adapter } from 'next-auth/adapters'
+import { Adapter, AdapterUser, AdapterAccount, AdapterSession, VerificationToken } from 'next-auth/adapters'
 import pool from './db'
 
 // Custom PostgreSQL Adapter for alrimjang schema
 function CustomPgAdapter(): Adapter {
   return {
-    async createUser(user) {
+    async createUser(user: Omit<AdapterUser, 'id'>) {
       const result = await pool.query(
         'INSERT INTO alrimjang.users (id, name, email, "emailVerified", image, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING *',
         [crypto.randomUUID(), user.name, user.email, user.emailVerified, user.image]
@@ -28,7 +28,7 @@ function CustomPgAdapter(): Adapter {
       )
       return result.rows[0] || null
     },
-    async updateUser(user) {
+    async updateUser(user: Partial<AdapterUser> & Pick<AdapterUser, 'id'>) {
       const result = await pool.query(
         'UPDATE alrimjang.users SET name = $1, email = $2, "emailVerified" = $3, image = $4 WHERE id = $5 RETURNING *',
         [user.name, user.email, user.emailVerified, user.image, user.id]
@@ -38,7 +38,7 @@ function CustomPgAdapter(): Adapter {
     async deleteUser(userId) {
       await pool.query('DELETE FROM alrimjang.users WHERE id = $1', [userId])
     },
-    async linkAccount(account) {
+    async linkAccount(account: AdapterAccount) {
       await pool.query(
         'INSERT INTO alrimjang.accounts (id, "userId", type, provider, "providerAccountId", refresh_token, access_token, expires_at, token_type, scope, id_token, session_state) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
         [
