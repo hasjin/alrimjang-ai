@@ -41,6 +41,7 @@ export default function Navigation() {
     { href: '/generate', label: '문서 생성' },
     { href: '/children', label: '원아 관리' },
     { href: '/documents', label: '문서 기록' },
+    { href: '/guide', label: '사용 가이드' },
     { href: '/mypage', label: '마이페이지' },
   ]
 

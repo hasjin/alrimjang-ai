@@ -30,7 +30,7 @@ export default function HeartDisplay({ remainingHearts, heartsResetAt }: HeartDi
       </div>
       <div className="text-right">
         <div className="text-sm text-gray-600 mb-1">하트 사용량</div>
-        <div className="text-xs text-gray-500">생성: 10❤️ | 수정: 3❤️ | RAG: 30❤️</div>
+        <div className="text-xs text-gray-500">생성: 10❤️ | 수정: 3❤️ | 전문 지식: 30❤️</div>
       </div>
     </div>
   )

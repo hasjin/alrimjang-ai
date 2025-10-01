@@ -262,11 +262,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* RAG 전문가 모드 */}
+          {/* 전문 지식 모드 */}
           <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-3xl shadow-2xl p-10 text-white">
             <div className="text-center mb-8">
               <span className="text-6xl mb-4 block">🧠</span>
-              <h3 className="text-3xl font-bold mb-4">RAG 전문가 모드</h3>
+              <h3 className="text-3xl font-bold mb-4">전문 지식 모드</h3>
               <p className="text-lg opacity-90 leading-relaxed">
                 보육과정 전문 자료 기반 최고 수준의 문서 생성
               </p>
@@ -296,16 +296,16 @@ export default function LandingPage() {
 
             <div className="mt-8 bg-white/20 backdrop-blur-sm rounded-xl p-5 text-center border-2 border-white/30">
               <p className="text-base font-semibold text-white">
-                💡 <strong>사용량 안내:</strong> RAG 전문가 모드는 30❤️를 사용합니다 (일반 생성 10❤️ × 3배)
+                💡 <strong>사용량 안내:</strong> 전문 지식 모드는 30❤️를 사용합니다 (일반 생성 10❤️ × 3배)
               </p>
             </div>
           </div>
 
-          {/* RAG ON/OFF 비교 예시 */}
+          {/* 전문 지식 모드 비교 예시 */}
           <div className="mt-8 bg-white rounded-3xl shadow-2xl p-10 border-2 border-purple-200">
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-gray-800 mb-2">
-                🔄 RAG 전문가 모드 비교
+                🔄 전문 지식 모드 비교
               </h3>
               <p className="text-gray-600">같은 입력, 놀라운 차이</p>
             </div>
@@ -337,12 +337,12 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* RAG ON */}
+              {/* 전문 지식 모드 ON */}
               <div className="flex flex-col">
                 <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl p-5 border-2 border-purple-400 flex-1">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-xl">🧠</span>
-                    <h4 className="text-lg font-bold text-purple-900">RAG 전문가 모드 (30❤️)</h4>
+                    <h4 className="text-lg font-bold text-purple-900">전문 지식 모드 (30❤️)</h4>
                   </div>
                   <div className="bg-white rounded-lg p-5 leading-relaxed">
                     <p className="mb-3 text-sm font-semibold text-gray-700">
@@ -378,7 +378,7 @@ export default function LandingPage() {
             <div className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border-2 border-purple-300">
               <div className="text-center">
                 <p className="text-base text-gray-800 mb-3 font-semibold">
-                  💡 RAG 전문가 모드가 적합한 경우:
+                  💡 전문 지식 모드가 적합한 경우:
                 </p>
                 <div className="flex flex-wrap justify-center gap-2 text-sm">
                   <span className="bg-white px-4 py-2 rounded-full border-2 border-purple-300 text-gray-800 font-medium">평가인증 대비</span>
@@ -493,7 +493,7 @@ export default function LandingPage() {
                     <li>✓ 만 나이 선택 → 자동 커리큘럼 적용 (표준보육과정 / 누리과정)</li>
                     <li>✓ 발달 영역 선택 → 정확한 교육 목표 연결</li>
                     <li>✓ 출력 유형 선택 → 알림장 / 배움읽기 / 배움지원</li>
-                    <li>✓ <span className="text-purple-700 font-bold">RAG 전문가 모드 → 최고 수준의 전문 문서</span></li>
+                    <li>✓ <span className="text-purple-700 font-bold">전문 지식 모드 → 최고 수준의 전문 문서</span></li>
                   </ul>
                 </div>
               </div>
@@ -528,10 +528,10 @@ export default function LandingPage() {
               구글 계정으로 간편하게 시작 · 하루 40❤️ 무료
             </p>
             <p className="text-xs text-gray-600 font-medium mb-2">
-              💡 생성 10❤️ | 수정 3❤️ | RAG 30❤️
+              💡 생성 10❤️ | 수정 3❤️ | 전문 지식 모드 30❤️
             </p>
             <p className="text-xs text-purple-600 font-semibold mb-2">
-              🎓 고급 생성 & 🧠 RAG 전문가 모드 지원
+              🎓 고급 생성 & 🧠 전문 지식 모드 지원
             </p>
             <p className="text-xs text-orange-600 font-semibold">
               현재 베타 서비스 운영 중입니다

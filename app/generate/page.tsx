@@ -48,8 +48,11 @@ export default function GeneratePage() {
 
   // 간소화된 옵션
   const [useCurriculum, setUseCurriculum] = useState(false) // 커리큘럼 모드 on/off
-  const [useRAG, setUseRAG] = useState(false) // RAG 모드 on/off
+  const [useExpertMode, setUseExpertMode] = useState(false) // 전문 지식 모드 on/off
   const [manualAge, setManualAge] = useState<number | ''>('') // 직접 입력 시 나이
+
+  // 생성 진행 상태
+  const [generationStep, setGenerationStep] = useState('')
 
   // 보육일지 fields
   const [playContent, setPlayContent] = useState('')
@@ -367,7 +370,7 @@ export default function GeneratePage() {
           targetType: documentType === '알림장' ? targetType : undefined,
           isRegenerate: isRegenerate && regenerateCount === 0,
           curriculum: determinedCurriculum,
-          useRAG: useRAG || false,
+          useRAG: useExpertMode || false,
         }),
       })
 
@@ -517,7 +520,7 @@ export default function GeneratePage() {
   }
 
   // 고급 모드 여부 확인
-  const isAdvancedMode = useCurriculum && useRAG
+  const isAdvancedMode = useCurriculum && useExpertMode
 
   if (status === 'loading') {
     return (
@@ -760,23 +763,23 @@ export default function GeneratePage() {
                   </div>
                 </div>
 
-                {/* RAG 모드 토글 */}
+                {/* 전문 지식 모드 토글 */}
                 <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
                   <div className="flex-1">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={useRAG}
-                        onChange={(e) => setUseRAG(e.target.checked)}
+                        checked={useExpertMode}
+                        onChange={(e) => setUseExpertMode(e.target.checked)}
                         className="w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
                       />
                       <div>
                         <div className="text-base font-bold text-gray-900 flex items-center gap-2">
-                          RAG 전문가 모드
+                          전문 지식 모드
                           <span className="px-2 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">3배 차감</span>
                         </div>
                         <div className="text-sm text-gray-600">
-                          전문 지식베이스 기반 고급 작성
+                          보육과정 전문 자료 기반 고급 작성
                         </div>
                       </div>
                     </label>
@@ -1125,7 +1128,16 @@ export default function GeneratePage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  생성 중...
+                  <span className="flex flex-col items-center gap-1">
+                    <span className="text-base">
+                      {useExpertMode ? '전문 지식 검색 및 생성 중...' : '문서 생성 중...'}
+                    </span>
+                    {useExpertMode && (
+                      <span className="text-xs opacity-90">
+                        보육과정 자료를 분석하고 있습니다
+                      </span>
+                    )}
+                  </span>
                 </>
               ) : (
                 `${documentType} 생성하기`
