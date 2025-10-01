@@ -9,31 +9,31 @@ export default function Navigation() {
   const { data: session } = useSession()
   const pathname = usePathname()
   const router = useRouter()
-  const [usage, setUsage] = useState<{ remaining: number; resetAt: string } | null>(null)
+  const [hearts, setHearts] = useState<{ remaining: number; resetAt: string } | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (session) {
-      fetchUsage()
+      fetchHearts()
     }
 
-    const handleUsageUpdate = () => {
-      fetchUsage()
+    const handleHeartsUpdate = () => {
+      fetchHearts()
     }
 
-    window.addEventListener('usage-updated', handleUsageUpdate)
-    return () => window.removeEventListener('usage-updated', handleUsageUpdate)
+    window.addEventListener('usage-updated', handleHeartsUpdate)
+    return () => window.removeEventListener('usage-updated', handleHeartsUpdate)
   }, [session])
 
-  const fetchUsage = async () => {
+  const fetchHearts = async () => {
     try {
-      const response = await fetch('/api/usage')
+      const response = await fetch('/api/hearts')
       if (response.ok) {
         const data = await response.json()
-        setUsage(data)
+        setHearts(data)
       }
     } catch (error) {
-      console.error('Failed to fetch usage:', error)
+      console.error('Failed to fetch hearts:', error)
     }
   }
 
@@ -81,16 +81,17 @@ export default function Navigation() {
 
           {/* 데스크톱 우측 */}
           <div className="hidden md:flex items-center space-x-4">
-            {usage && (
-              <div className="text-sm">
-                <span className={`font-medium ${
-                  usage.remaining === 0 ? 'text-red-600' :
-                  usage.remaining <= 2 ? 'text-yellow-600' :
-                  'text-green-600'
+            {hearts && (
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-pink-50 to-purple-50 px-3 py-1.5 rounded-full border border-purple-200">
+                <span className="text-base">❤️</span>
+                <span className={`text-sm font-bold ${
+                  hearts.remaining === 0 ? 'text-red-600' :
+                  hearts.remaining <= 10 ? 'text-yellow-600' :
+                  'text-purple-700'
                 }`}>
-                  {usage.remaining}회
+                  {hearts.remaining}
                 </span>
-                <span className="text-gray-600"> / 5회</span>
+                <span className="text-xs text-gray-500">/ 40</span>
               </div>
             )}
 
@@ -125,15 +126,16 @@ export default function Navigation() {
 
           {/* 모바일 메뉴 버튼 */}
           <div className="flex md:hidden items-center space-x-3">
-            {/* 모바일 사용량 표시 */}
-            {usage && (
-              <div className="text-xs">
-                <span className={`font-bold ${
-                  usage.remaining === 0 ? 'text-red-600' :
-                  usage.remaining <= 2 ? 'text-yellow-600' :
-                  'text-green-600'
+            {/* 모바일 하트 표시 */}
+            {hearts && (
+              <div className="flex items-center gap-1 bg-gradient-to-r from-pink-50 to-purple-50 px-2 py-1 rounded-full border border-purple-200">
+                <span className="text-sm">❤️</span>
+                <span className={`text-xs font-bold ${
+                  hearts.remaining === 0 ? 'text-red-600' :
+                  hearts.remaining <= 10 ? 'text-yellow-600' :
+                  'text-purple-700'
                 }`}>
-                  {usage.remaining}/5
+                  {hearts.remaining}
                 </span>
               </div>
             )}

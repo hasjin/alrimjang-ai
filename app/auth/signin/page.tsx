@@ -14,6 +14,11 @@ export default function SignIn() {
     }
   }, [status, router])
 
+  // Development auto-login
+  const handleDevLogin = async () => {
+    await signIn('credentials', { callbackUrl: '/generate' })
+  }
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center">
@@ -39,6 +44,15 @@ export default function SignIn() {
             로그인하여 시작하세요
           </p>
         </div>
+
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={handleDevLogin}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center justify-center gap-3 text-base mb-4"
+          >
+            🚀 개발용 빠른 로그인
+          </button>
+        )}
 
         <button
           onClick={() => signIn('google', { callbackUrl: '/generate' })}

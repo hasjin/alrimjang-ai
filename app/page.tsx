@@ -134,6 +134,265 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* 고급 생성 기능 강조 - NEW */}
+      <section className="py-20 px-4 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <div className="inline-block bg-purple-100 text-purple-700 px-5 py-2 rounded-full text-sm font-semibold mb-4">
+              🆕 NEW FEATURE
+            </div>
+            <h2 className="text-4xl font-bold text-gray-800 mb-4">
+              <span className="text-purple-600">전문가급 고급 생성</span> 기능
+            </h2>
+            <p className="text-xl text-gray-600">
+              제4차 표준보육과정 & 2019 누리과정을 완벽히 준수하는 전문 문서
+            </p>
+          </div>
+
+          {/* 커리큘럼 기반 생성 */}
+          <div className="bg-white rounded-3xl shadow-2xl p-10 border-2 border-purple-200 mb-8">
+            <div className="text-center mb-8">
+              <span className="text-6xl mb-4 block">🎓</span>
+              <h3 className="text-3xl font-bold text-gray-800 mb-4">커리큘럼 기반 전문 문서</h3>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                연령과 발달 영역에 맞춘 정확한 교육과정 준수 문서 생성
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gradient-to-br from-pink-50 to-rose-100 rounded-2xl p-6 border-2 border-pink-300">
+                <h4 className="text-xl font-bold text-gray-900 mb-3">👶 영아 (0-2세)</h4>
+                <p className="text-gray-800 mb-3 font-semibold text-base">제4차 표준보육과정</p>
+                <ul className="text-base text-gray-800 space-y-1.5 font-medium">
+                  <li>✓ 기본생활</li>
+                  <li>✓ 신체운동</li>
+                  <li>✓ 의사소통</li>
+                  <li>✓ 사회관계</li>
+                  <li>✓ 예술경험</li>
+                  <li>✓ 자연탐구</li>
+                </ul>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border-2 border-blue-300">
+                <h4 className="text-xl font-bold text-gray-900 mb-3">🧒 유아 (3-5세)</h4>
+                <p className="text-gray-800 mb-3 font-semibold text-base">2019 개정 누리과정</p>
+                <ul className="text-base text-gray-800 space-y-1.5 font-medium">
+                  <li>✓ 신체운동·건강</li>
+                  <li>✓ 의사소통</li>
+                  <li>✓ 사회관계</li>
+                  <li>✓ 예술경험</li>
+                  <li>✓ 자연탐구</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* 출력 유형 */}
+            <div className="grid md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl p-5 border-2 border-green-300">
+                <div className="text-3xl mb-2">📝</div>
+                <h5 className="text-lg font-bold text-gray-900 mb-2">알림장</h5>
+                <p className="text-base text-gray-800 font-medium">
+                  교육과정 기반 부모 소통
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl p-5 border-2 border-yellow-300">
+                <div className="text-3xl mb-2">🔍</div>
+                <h5 className="text-lg font-bold text-gray-900 mb-2">배움읽기</h5>
+                <p className="text-base text-gray-800 font-medium">
+                  관찰 → 해석 → 교육과정 연결
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-xl p-5 border-2 border-purple-300">
+                <div className="text-3xl mb-2">🎯</div>
+                <h5 className="text-lg font-bold text-gray-900 mb-2">배움지원</h5>
+                <p className="text-base text-gray-800 font-medium">
+                  확장/심화 활동 2단계 제안
+                </p>
+              </div>
+            </div>
+
+            {/* 커리큘럼 적용 예시 */}
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 border-2 border-indigo-300">
+              <div className="text-center mb-6">
+                <h4 className="text-2xl font-bold text-gray-900 mb-2">💡 커리큘럼 적용 예시</h4>
+                <p className="text-base text-gray-700 font-medium">만 3세 | 신체운동·건강 | 배움읽기</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-white rounded-xl p-5 border-2 border-indigo-300">
+                  <p className="text-sm text-gray-700 font-bold mb-2">📋 입력 내용</p>
+                  <p className="text-base text-gray-900 font-medium">
+                    지민이가 오늘 친구들과 술래잡기를 하며 빠르게 뛰어다녔습니다. 넘어지지 않고 방향을 바꾸며 잘 달렸어요.
+                  </p>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl p-5 border-2 border-indigo-400">
+                  <p className="text-sm text-purple-800 font-bold mb-4">✨ 커리큘럼 기반 생성 결과 (배움읽기)</p>
+
+                  <div className="space-y-3 text-base text-gray-900">
+                    <div>
+                      <p className="font-bold text-indigo-800 mb-2">🔍 관찰</p>
+                      <p className="leading-relaxed font-medium">
+                        지민이는 술래잡기 놀이에서 빠르게 달리며 친구들을 쫓거나 피하는 모습을 보였습니다.
+                        방향을 바꿀 때도 균형을 잃지 않고 안정적으로 움직였습니다.
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-bold text-indigo-800 mb-2">💭 해석</p>
+                      <p className="leading-relaxed font-medium">
+                        이는 대근육 조절 능력과 공간 지각 능력이 발달하고 있음을 보여줍니다.
+                        또한 또래와의 놀이를 통해 신체 활동에 대한 즐거움과 자신감을 형성하고 있습니다.
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-bold text-indigo-800 mb-2">🎓 교육과정 연결</p>
+                      <p className="leading-relaxed bg-white p-4 rounded-lg border-2 border-indigo-300 font-medium">
+                        <span className="font-bold text-indigo-900">2019 개정 누리과정 - 신체운동·건강</span><br/>
+                        • 신체활동에 자발적으로 참여한다<br/>
+                        • 신체 균형과 조절 능력을 기른다
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RAG 전문가 모드 */}
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-3xl shadow-2xl p-10 text-white">
+            <div className="text-center mb-8">
+              <span className="text-6xl mb-4 block">🧠</span>
+              <h3 className="text-3xl font-bold mb-4">RAG 전문가 모드</h3>
+              <p className="text-lg opacity-90 leading-relaxed">
+                보육과정 전문 자료 기반 최고 수준의 문서 생성
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border-2 border-white/30">
+                <h4 className="text-xl font-bold mb-4 text-white">📚 전문 지식베이스</h4>
+                <ul className="space-y-2.5 text-base font-medium text-white">
+                  <li>✓ 발달 이론 및 연구 기반</li>
+                  <li>✓ 관찰 기록 모범 사례</li>
+                  <li>✓ 연령별 발달 단계 상세 자료</li>
+                  <li>✓ 커리큘럼 목표 정확 연결</li>
+                </ul>
+              </div>
+
+              <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-6 border-2 border-white/30">
+                <h4 className="text-xl font-bold mb-4 text-white">⚡ 강력한 효과</h4>
+                <ul className="space-y-2.5 text-base font-medium text-white">
+                  <li>✓ 전문적이고 교육적인 내용</li>
+                  <li>✓ 발달 단계별 맞춤 활동</li>
+                  <li>✓ 이론적 근거 기반 해석</li>
+                  <li>✓ 교육기관 평가 대비 완벽</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-8 bg-white/20 backdrop-blur-sm rounded-xl p-5 text-center border-2 border-white/30">
+              <p className="text-base font-semibold text-white">
+                💡 <strong>사용량 안내:</strong> RAG 전문가 모드는 30❤️를 사용합니다 (일반 생성 10❤️ × 3배)
+              </p>
+            </div>
+          </div>
+
+          {/* RAG ON/OFF 비교 예시 */}
+          <div className="mt-8 bg-white rounded-3xl shadow-2xl p-10 border-2 border-purple-200">
+            <div className="text-center mb-8">
+              <h3 className="text-3xl font-bold text-gray-800 mb-2">
+                🔄 RAG 전문가 모드 비교
+              </h3>
+              <p className="text-gray-600">같은 입력, 놀라운 차이</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* RAG OFF */}
+              <div className="flex flex-col">
+                <div className="bg-gray-100 rounded-xl p-5 border-2 border-gray-300 flex-1">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xl">📝</span>
+                    <h4 className="text-lg font-bold text-gray-900">일반 생성 (10❤️)</h4>
+                  </div>
+                  <div className="bg-white rounded-lg p-5 leading-relaxed">
+                    <p className="mb-3 text-sm font-semibold text-gray-700">
+                      📋 입력: 만 1세 서연이가 블록을 쌓다가 무너뜨리고 다시 쌓기를 반복했어요
+                    </p>
+                    <hr className="my-4 border-gray-300"/>
+                    <p className="text-base text-gray-900 font-medium">
+                      오늘 서연이는 블록 놀이를 즐겼습니다. 블록을 쌓다가 무너지면 다시 쌓기를 반복하며
+                      끈기 있게 놀이했어요. 블록을 쌓고 무너뜨리는 과정을 여러 번 반복하며
+                      즐거워하는 모습이 보였답니다.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-3 text-sm text-gray-700 font-medium">
+                  <span>✓ 빠른 생성</span>
+                  <span className="text-gray-400">•</span>
+                  <span>✓ 기본적인 내용</span>
+                </div>
+              </div>
+
+              {/* RAG ON */}
+              <div className="flex flex-col">
+                <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl p-5 border-2 border-purple-400 flex-1">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xl">🧠</span>
+                    <h4 className="text-lg font-bold text-purple-900">RAG 전문가 모드 (30❤️)</h4>
+                  </div>
+                  <div className="bg-white rounded-lg p-5 leading-relaxed">
+                    <p className="mb-3 text-sm font-semibold text-gray-700">
+                      📋 입력: 만 1세 서연이가 블록을 쌓다가 무너뜨리고 다시 쌓기를 반복했어요
+                    </p>
+                    <hr className="my-4 border-gray-300"/>
+                    <p className="text-base text-gray-900 font-medium mb-3">
+                      <strong className="text-purple-700">🔍 관찰:</strong> 서연이는 블록 2-3개를 수직으로 쌓다가 무너지는 것을 관찰하고,
+                      다시 쌓기를 5회 이상 반복했습니다.
+                    </p>
+                    <p className="text-base text-gray-900 font-medium mb-3">
+                      <strong className="text-purple-700">💭 해석:</strong> 이는 만 1세 영아의 전형적인 '순환 반응' 행동으로,
+                      자신의 행동이 결과에 미치는 영향을 탐색하는 과정입니다.
+                      블록이 무너지는 인과관계를 이해하고, 손과 눈의 협응력을 발달시키고 있습니다.
+                    </p>
+                    <p className="text-base text-gray-900 font-medium bg-purple-50 p-3 rounded border border-purple-200">
+                      <strong className="text-purple-900">🎓 제4차 표준보육과정 - 자연탐구:</strong><br/>
+                      • 주변 환경과 자연에 관심을 가진다 (탐구과정 즐기기)<br/>
+                      • 물체의 특성과 변화를 여러 감각으로 탐색한다
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-3 text-sm text-purple-800 font-semibold">
+                  <span>✓ 발달 이론 기반</span>
+                  <span className="text-purple-400">•</span>
+                  <span>✓ 교육과정 연결</span>
+                  <span className="text-purple-400">•</span>
+                  <span>✓ 전문적 해석</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border-2 border-purple-300">
+              <div className="text-center">
+                <p className="text-base text-gray-800 mb-3 font-semibold">
+                  💡 RAG 전문가 모드가 적합한 경우:
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 text-sm">
+                  <span className="bg-white px-4 py-2 rounded-full border-2 border-purple-300 text-gray-800 font-medium">평가인증 대비</span>
+                  <span className="bg-white px-4 py-2 rounded-full border-2 border-purple-300 text-gray-800 font-medium">관찰일지 작성</span>
+                  <span className="bg-white px-4 py-2 rounded-full border-2 border-purple-300 text-gray-800 font-medium">발달평가 보고서</span>
+                  <span className="bg-white px-4 py-2 rounded-full border-2 border-purple-300 text-gray-800 font-medium">전문적인 부모 상담</span>
+                  <span className="bg-white px-4 py-2 rounded-full border-2 border-purple-300 text-gray-800 font-medium">교사 연수 자료</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 톤 선택 기능 강조 */}
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -193,7 +452,7 @@ export default function LandingPage() {
           {/* 사용 방법 */}
           <div className="bg-white rounded-3xl shadow-xl p-10 border border-orange-100">
             <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">간단한 3단계</h3>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-8 mb-8">
               <div className="text-center">
                 <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-3xl">1️⃣</span>
@@ -207,9 +466,10 @@ export default function LandingPage() {
                 <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-3xl">2️⃣</span>
                 </div>
-                <h4 className="text-lg font-bold text-gray-800 mb-2">톤 선택</h4>
+                <h4 className="text-lg font-bold text-gray-800 mb-2">톤 & 옵션 선택</h4>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  감성적/균형/정보형 중<br />원하는 톤을 선택하세요
+                  감성적/균형/정보형 톤 선택<br />
+                  <span className="text-purple-600 font-semibold">+ 고급 옵션 (커리큘럼 준수)</span>
                 </p>
               </div>
               <div className="text-center">
@@ -220,6 +480,22 @@ export default function LandingPage() {
                 <p className="text-gray-600 text-sm leading-relaxed">
                   클릭 한 번으로<br />완성된 문서를 받아보세요
                 </p>
+              </div>
+            </div>
+
+            {/* 고급 옵션 안내 */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border-2 border-purple-300">
+              <div className="flex items-start gap-4">
+                <span className="text-3xl">⚙️</span>
+                <div className="flex-1">
+                  <h4 className="text-xl font-bold text-gray-900 mb-3">고급 옵션으로 더 전문적으로!</h4>
+                  <ul className="text-base text-gray-800 space-y-2 font-medium">
+                    <li>✓ 만 나이 선택 → 자동 커리큘럼 적용 (표준보육과정 / 누리과정)</li>
+                    <li>✓ 발달 영역 선택 → 정확한 교육 목표 연결</li>
+                    <li>✓ 출력 유형 선택 → 알림장 / 배움읽기 / 배움지원</li>
+                    <li>✓ <span className="text-purple-700 font-bold">RAG 전문가 모드 → 최고 수준의 전문 문서</span></li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
@@ -249,7 +525,13 @@ export default function LandingPage() {
               오늘부터 편하게 시작하기 ✨
             </button>
             <p className="text-sm text-gray-500 mb-2">
-              구글 계정으로 간편하게 시작 · 하루 5회 무료
+              구글 계정으로 간편하게 시작 · 하루 40❤️ 무료
+            </p>
+            <p className="text-xs text-gray-600 font-medium mb-2">
+              💡 생성 10❤️ | 수정 3❤️ | RAG 30❤️
+            </p>
+            <p className="text-xs text-purple-600 font-semibold mb-2">
+              🎓 고급 생성 & 🧠 RAG 전문가 모드 지원
             </p>
             <p className="text-xs text-orange-600 font-semibold">
               현재 베타 서비스 운영 중입니다

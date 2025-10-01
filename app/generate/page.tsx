@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import HeartDisplay from '@/components/generate/HeartDisplay'
+import RefinementPanel from '@/components/generate/RefinementPanel'
+import ResultDisplay from '@/components/generate/ResultDisplay'
+import ToastNotification from '@/components/ToastNotification'
 
 type DocumentType = '알림장' | '보육일지' | '관찰기록' | '발달평가' | '부모면담'
 
@@ -11,6 +15,7 @@ interface Child {
   name: string
   birth_date: string | null
   class_name: string | null
+  age: number
 }
 
 interface Document {
@@ -36,11 +41,15 @@ export default function GeneratePage() {
   const [useManualName, setUseManualName] = useState(false)
 
   // 알림장 fields
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [memo, setMemo] = useState('')
   const [style, setStyle] = useState('간결형')
   const [tone, setTone] = useState('균형')
   const [targetType, setTargetType] = useState('개인')
+
+  // 간소화된 옵션
+  const [useCurriculum, setUseCurriculum] = useState(false) // 커리큘럼 모드 on/off
+  const [useRAG, setUseRAG] = useState(false) // RAG 모드 on/off
+  const [manualAge, setManualAge] = useState<number | ''>('') // 직접 입력 시 나이
 
   // 보육일지 fields
   const [playContent, setPlayContent] = useState('')
@@ -77,10 +86,24 @@ export default function GeneratePage() {
   const [error, setError] = useState('')
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+
+  // 수정 관련 states
+  const [refinementCount, setRefinementCount] = useState(0)
+  const [refining, setRefining] = useState(false)
+
+  // 버전 히스토리 states
+  const [versionHistory, setVersionHistory] = useState<Array<{ text: string; timestamp: number; charCount: number }>>([])
+  const [originalInput, setOriginalInput] = useState('') // 사용자 원본 입력
+  const [toastType, setToastType] = useState<'success' | 'error' | 'warning'>('success')
   const [regenerateCount, setRegenerateCount] = useState(0)
   const [showPreviousDocs, setShowPreviousDocs] = useState(false)
   const [previousDocs, setPreviousDocs] = useState<Document[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
+  const [showForm, setShowForm] = useState(true)
+
+  // 하트 시스템
+  const [remainingHearts, setRemainingHearts] = useState<number>(40)
+  const [heartsResetAt, setHeartsResetAt] = useState<Date | null>(null)
 
   // Auth check
   useEffect(() => {
@@ -89,12 +112,28 @@ export default function GeneratePage() {
     }
   }, [status, router])
 
-  // Fetch children
+  // Fetch children and hearts
   useEffect(() => {
     if (status === 'authenticated') {
       fetchChildren()
+      fetchRemainingHearts()
     }
   }, [status])
+
+  const fetchRemainingHearts = async () => {
+    try {
+      const response = await fetch('/api/hearts')
+      if (response.ok) {
+        const data = await response.json()
+        setRemainingHearts(data.remaining)
+        if (data.resetAt) {
+          setHeartsResetAt(new Date(data.resetAt))
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch hearts:', error)
+    }
+  }
 
   const fetchChildren = async () => {
     try {
@@ -134,7 +173,6 @@ export default function GeneratePage() {
             if (inputData.tone) setTone(inputData.tone)
             if (inputData.targetType) setTargetType(inputData.targetType)
             if (inputData.style) setStyle(inputData.style)
-            if (inputData.categories) setSelectedCategories(inputData.categories)
             if (inputData.memo) setMemo(inputData.memo)
           }
           // 보육일지 설정 불러오기
@@ -209,30 +247,11 @@ export default function GeneratePage() {
     }
   }
 
-  const categories = {
-    '일상 생활': ['화장실 훈련', '식사', '낮잠', '등하원', '옷 갈아입기', '개인위생'],
-    '건강 관리': ['투약', '병원/상처', '발열/몸살', '건강검진', '알레르기/특이사항'],
-    '놀이/활동': ['실내 자유놀이', '실외 활동', '미술 활동', '음악/율동', '신체 활동', '요리 활동', '과학/탐구'],
-    '특별 행사': ['현장학습', '운동회/발표회', '생일 파티', '절기/기념일', '졸업/입학식'],
-    '교육/발달': ['언어/한글', '수학/인지', '영어', '특별활동'],
-    '사회성/정서': ['친구 관계', '갈등/문제행동', '칭찬/성장'],
-    '부모 소통': ['준비물 요청', '일정 안내', '상담 요청'],
-  }
 
-  const categoryIcons: Record<string, string> = {
-    '일상 생활': '🏠',
-    '건강 관리': '🏥',
-    '놀이/활동': '🎨',
-    '특별 행사': '🎉',
-    '교육/발달': '📚',
-    '사회성/정서': '🤝',
-    '부모 소통': '📢',
-  }
-
-  const toggleCategory = (cat: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    )
+  // 선택된 원아의 나이를 기반으로 커리큘럼 자동 결정
+  const getCurriculumFromAge = (age: number | null): string => {
+    if (age === null) return ''
+    return age <= 2 ? 'standard-v4' : 'nuri-2019'
   }
 
   const getChildName = (): string => {
@@ -246,7 +265,7 @@ export default function GeneratePage() {
   const getInputData = (): Record<string, any> => {
     switch (documentType) {
       case '알림장':
-        return { categories: selectedCategories, memo }
+        return { memo } // 카테고리 제거, AI가 자동 판단
       case '보육일지':
         return { playContent, teacherSupport, evaluation, date: boyukDate }
       case '관찰기록':
@@ -266,13 +285,15 @@ export default function GeneratePage() {
       return '아이 이름을 선택하거나 입력해주세요.'
     }
 
+    // 직접 입력 시 나이 필수
+    if (useManualName && manualAge === '') {
+      return '직접 입력 시 나이를 선택해주세요.'
+    }
+
     switch (documentType) {
       case '알림장':
-        if (selectedCategories.length === 0) {
-          return '카테고리를 최소 1개 이상 선택해주세요.'
-        }
         if (!memo) {
-          return '간단 메모를 입력해주세요.'
+          return '내용을 입력해주세요.'
         }
         break
       case '보육일지':
@@ -324,6 +345,13 @@ export default function GeneratePage() {
       const childName = getChildName()
       const inputData = getInputData()
 
+      // 나이 결정: 등록된 원아 or 직접 입력
+      const selectedChild = children.find((c) => c.id === selectedChildId)
+      const childAge = useManualName ? (manualAge as number) : (selectedChild?.age || null)
+
+      // 커리큘럼 자동 결정
+      const determinedCurriculum = useCurriculum ? getCurriculumFromAge(childAge) : undefined
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -338,6 +366,8 @@ export default function GeneratePage() {
           tone: documentType === '알림장' ? tone : undefined,
           targetType: documentType === '알림장' ? targetType : undefined,
           isRegenerate: isRegenerate && regenerateCount === 0,
+          curriculum: determinedCurriculum,
+          useRAG: useRAG || false,
         }),
       })
 
@@ -345,19 +375,32 @@ export default function GeneratePage() {
 
       if (!response.ok) {
         if (response.status === 429) {
-          const resetDate = new Date(data.resetAt)
-          const hours = Math.floor((resetDate.getTime() - Date.now()) / (1000 * 60 * 60))
-          const minutes = Math.floor(
-            ((resetDate.getTime() - Date.now()) % (1000 * 60 * 60)) / (1000 * 60)
-          )
-          throw new Error(
-            `일일 생성 횟수(5개)를 초과했습니다. ${hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`} 후 다시 이용하실 수 있습니다.`
-          )
+          // 사용량 초과 토스트 표시
+          setToastType('error')
+          setToastMessage(data.error || '일일 생성 횟수를 초과했습니다.')
+          setShowToast(true)
+          setTimeout(() => setShowToast(false), 5000)
+          return
         }
         throw new Error(data.error || '문서 생성 실패')
       }
 
       setResult(data.message)
+      setRemainingHearts(data.remaining) // Update hearts display
+
+      // 원본 입력 저장 (첫 생성 시)
+      if (!isRegenerate && !originalInput) {
+        setOriginalInput(memo || JSON.stringify(inputData))
+      }
+
+      // 버전 히스토리에 추가
+      setVersionHistory([{
+        text: data.message,
+        timestamp: Date.now(),
+        charCount: data.message.length
+      }])
+
+      setShowForm(false) // 성공 시 폼 닫기
       if (isRegenerate) {
         setRegenerateCount((prev) => prev + 1)
       }
@@ -372,9 +415,21 @@ export default function GeneratePage() {
     }
   }
 
+  const handleNewDocument = () => {
+    setResult('')
+    setError('')
+    setShowForm(true)
+    setRegenerateCount(0)
+    setRefinementCount(0)
+    setVersionHistory([])
+    setOriginalInput('')
+    setMemo('')
+  }
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(result)
+      setToastType('success')
       setToastMessage('복사되었습니다!')
       setShowToast(true)
       setTimeout(() => setShowToast(false), 3000)
@@ -382,6 +437,87 @@ export default function GeneratePage() {
       alert('복사에 실패했습니다.')
     }
   }
+
+  const handleRestoreVersion = (index: number) => {
+    if (index >= 0 && index < versionHistory.length) {
+      const version = versionHistory[index]
+      setResult(version.text)
+      setToastType('success')
+      setToastMessage('이전 버전으로 복원되었습니다.')
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 3000)
+    }
+  }
+
+  const handleRefine = async (type: 'shorten' | 'lengthen' | 'adjust_tone' | 'remove_fluff' | 'add_emoji' | 'formal' | 'casual' | 'polite' | 'friendly' | 'custom', customRequest?: string) => {
+    if (refinementCount >= 5) {
+      setToastType('warning')
+      setToastMessage('최대 수정 횟수(5회)를 초과했습니다.')
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 3000)
+      return
+    }
+
+    setRefining(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalText: result,
+          refinementType: type,
+          customRequest: customRequest || '',
+          currentRefinementCount: refinementCount,
+          originalInput: originalInput, // 원문 맥락 전달
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setToastType('error')
+          setToastMessage(data.error)
+          setShowToast(true)
+          setTimeout(() => setShowToast(false), 5000)
+          return
+        }
+        throw new Error(data.error || '수정 실패')
+      }
+
+      // 버전 히스토리에 추가 (최대 5개)
+      setVersionHistory(prev => [
+        {
+          text: data.message,
+          timestamp: Date.now(),
+          charCount: data.message.length
+        },
+        ...prev
+      ].slice(0, 5))
+
+      setResult(data.message)
+      setRemainingHearts(data.remaining)
+      setRefinementCount(data.refinementCount)
+
+      setToastType('success')
+      setToastMessage('수정이 완료되었습니다!')
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setToastType('error')
+      setToastMessage(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 3000)
+    } finally {
+      setRefining(false)
+    }
+  }
+
+  // 고급 모드 여부 확인
+  const isAdvancedMode = useCurriculum && useRAG
 
   if (status === 'loading') {
     return (
@@ -398,10 +534,17 @@ export default function GeneratePage() {
     return null
   }
 
+
   return (
     <div className="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 py-8">
 
       <main className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* 하트 표시 */}
+        <HeartDisplay
+          remainingHearts={remainingHearts}
+          heartsResetAt={heartsResetAt}
+        />
+
         <div className="text-center mb-10">
           <h1 className="text-5xl font-bold text-gray-900 mb-3">문서 생성하기</h1>
           <p className="text-lg text-gray-700 font-medium">
@@ -409,8 +552,9 @@ export default function GeneratePage() {
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        {showForm && (
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Document Type Selection */}
             <div>
               <label className="block text-base font-bold text-gray-900 mb-3">
@@ -557,60 +701,86 @@ export default function GeneratePage() {
                   </div>
                 </div>
 
-                {/* Categories */}
-                <div>
-                  <label className="block text-base font-bold text-gray-900 mb-2">
-                    카테고리{' '}
-                    <span className="text-sm text-red-600 font-normal">
-                      (필수 - 최소 1개 이상)
-                    </span>
-                  </label>
-                  <div className="space-y-4">
-                    {Object.entries(categories).map(([group, items]) => (
-                      <div key={group}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xl">{categoryIcons[group]}</span>
-                          <h3 className="text-sm font-bold text-gray-700">{group}</h3>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                          {items.map((cat) => (
-                            <label
-                              key={cat}
-                              className={`flex items-center justify-center px-3 py-2 text-sm rounded-lg border-2 cursor-pointer transition ${
-                                selectedCategories.includes(cat)
-                                  ? 'border-purple-600 bg-purple-100 text-purple-900 font-bold'
-                                  : 'border-gray-300 hover:border-purple-400 text-gray-700 font-semibold'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                value={cat}
-                                checked={selectedCategories.includes(cat)}
-                                onChange={() => toggleCategory(cat)}
-                                className="sr-only"
-                              />
-                              <span>{cat}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                {/* 직접 입력 시 나이 선택 */}
+                {useManualName && (
+                  <div>
+                    <label className="block text-base font-bold text-gray-900 mb-2">
+                      나이 <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      value={manualAge}
+                      onChange={(e) => setManualAge(e.target.value === '' ? '' : parseInt(e.target.value))}
+                      className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
+                      required
+                    >
+                      <option value="">나이를 선택하세요</option>
+                      <option value="0">만 0세</option>
+                      <option value="1">만 1세</option>
+                      <option value="2">만 2세</option>
+                      <option value="3">만 3세</option>
+                      <option value="4">만 4세</option>
+                      <option value="5">만 5세</option>
+                    </select>
                   </div>
-                </div>
+                )}
 
-                {/* Memo */}
+                {/* Memo - 메인 입력 */}
                 <div>
                   <label htmlFor="memo" className="block text-base font-bold text-gray-900 mb-2">
-                    간단 메모
+                    내용 입력 <span className="text-red-600">*</span>
                   </label>
                   <textarea
                     id="memo"
                     value={memo}
                     onChange={(e) => setMemo(e.target.value)}
                     className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition resize-none text-gray-900"
-                    placeholder="예: 10시 쉬 성공, 스스로 말함"
-                    rows={4}
+                    placeholder="오늘 있었던 일을 자유롭게 작성하세요. AI가 자동으로 적절한 카테고리와 발달 영역을 판단합니다."
+                    rows={6}
+                    required
                   />
+                </div>
+
+                {/* 커리큘럼 모드 토글 */}
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                  <div className="flex-1">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useCurriculum}
+                        onChange={(e) => setUseCurriculum(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="text-base font-bold text-gray-900">커리큘럼 모드</div>
+                        <div className="text-sm text-gray-600">
+                          보육과정 기반 전문 작성 (나이에 따라 자동 적용)
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* RAG 모드 토글 */}
+                <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
+                  <div className="flex-1">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useRAG}
+                        onChange={(e) => setUseRAG(e.target.checked)}
+                        className="w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
+                      />
+                      <div>
+                        <div className="text-base font-bold text-gray-900 flex items-center gap-2">
+                          RAG 전문가 모드
+                          <span className="px-2 py-0.5 bg-amber-200 text-amber-900 text-xs font-bold rounded">3배 차감</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          전문 지식베이스 기반 고급 작성
+                        </div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Tone */}
@@ -639,6 +809,7 @@ export default function GeneratePage() {
                     ))}
                   </div>
                 </div>
+
               </>
             )}
 
@@ -962,6 +1133,7 @@ export default function GeneratePage() {
             </button>
           </form>
         </div>
+        )}
 
         {/* Error message */}
         {error && (
@@ -1038,50 +1210,36 @@ export default function GeneratePage() {
 
         {/* Result display */}
         {result && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-3xl font-bold text-gray-900">생성된 {documentType}</h2>
-              <div className="flex gap-3">
-                <button
-                  onClick={(e) => handleSubmit(e, true)}
-                  disabled={loading}
-                  className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition text-base disabled:opacity-50 flex items-center gap-2"
-                >
-                  다시 생성
-                  {regenerateCount === 0 && (
-                    <span className="text-xs bg-white text-blue-600 px-2 py-0.5 rounded-full">
-                      무료
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={handleCopy}
-                  className="px-5 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition text-base"
-                >
-                  복사하기
-                </button>
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200">
-              <p className="text-gray-900 whitespace-pre-wrap leading-relaxed text-lg font-medium">
-                {result}
-              </p>
-            </div>
-            {regenerateCount > 0 && (
-              <p className="text-sm text-gray-600 mt-3 text-center">
-                추가 재생성 시 일일 생성 횟수가 차감됩니다.
-              </p>
-            )}
-          </div>
+          <>
+            <ResultDisplay
+              result={result}
+              versionHistory={versionHistory}
+              onRestore={handleRestoreVersion}
+              onCopy={handleCopy}
+              onNewDocument={handleNewDocument}
+              onRegenerate={(e) => handleSubmit(e, true)}
+              isLoading={loading}
+              regenerateCount={regenerateCount}
+              isAdvancedMode={isAdvancedMode}
+              documentType={documentType}
+            />
+
+            <RefinementPanel
+              refinementCount={refinementCount}
+              maxRefinements={5}
+              onRefine={handleRefine}
+              isRefining={refining}
+            />
+          </>
         )}
       </main>
 
       {/* Toast message */}
-      {showToast && (
-        <div className="fixed bottom-8 right-8 bg-gray-900 text-white px-6 py-4 rounded-lg shadow-2xl animate-fade-in text-base font-semibold">
-          {toastMessage}
-        </div>
-      )}
+      <ToastNotification
+        show={showToast}
+        message={toastMessage}
+        type={toastType}
+      />
     </div>
   )
 }

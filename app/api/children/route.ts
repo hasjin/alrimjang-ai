@@ -32,15 +32,23 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, birthDate, className, notes } = body
+    const { name, birthDate, className, notes, age } = body
 
     if (!name) {
       return NextResponse.json({ error: '이름을 입력해주세요.' }, { status: 400 })
     }
 
+    if (age === undefined || age === null) {
+      return NextResponse.json({ error: '나이를 선택해주세요.' }, { status: 400 })
+    }
+
+    if (age < 0 || age > 5) {
+      return NextResponse.json({ error: '나이는 만 0세에서 5세 사이여야 합니다.' }, { status: 400 })
+    }
+
     const result = await pool.query(
-      'INSERT INTO alrimjang.children (user_id, name, birth_date, class_name, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [session.user.id, name, birthDate || null, className || null, notes || null]
+      'INSERT INTO alrimjang.children (user_id, name, birth_date, class_name, notes, age) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [session.user.id, name, birthDate || null, className || null, notes || null, age]
     )
 
     return NextResponse.json({ child: result.rows[0] })

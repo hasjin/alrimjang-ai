@@ -10,6 +10,7 @@ interface Child {
   birth_date: string | null
   class_name: string | null
   notes: string | null
+  age: number
   created_at: string
 }
 
@@ -26,6 +27,7 @@ export default function ChildrenPage() {
   const [birthDate, setBirthDate] = useState('')
   const [className, setClassName] = useState('')
   const [notes, setNotes] = useState('')
+  const [age, setAge] = useState<number | ''>('')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -55,6 +57,7 @@ export default function ChildrenPage() {
     setBirthDate('')
     setClassName('')
     setNotes('')
+    setAge('')
     setEditingChild(null)
     setShowForm(false)
   }
@@ -65,6 +68,7 @@ export default function ChildrenPage() {
     setBirthDate(child.birth_date || '')
     setClassName(child.class_name || '')
     setNotes(child.notes || '')
+    setAge(child.age)
     setShowForm(true)
   }
 
@@ -73,6 +77,11 @@ export default function ChildrenPage() {
 
     if (!name) {
       alert('이름을 입력해주세요.')
+      return
+    }
+
+    if (age === '' || age === null || age === undefined) {
+      alert('나이를 선택해주세요.')
       return
     }
 
@@ -88,6 +97,7 @@ export default function ChildrenPage() {
           birthDate: birthDate || null,
           className: className || null,
           notes: notes || null,
+          age,
         }),
       })
 
@@ -186,6 +196,26 @@ export default function ChildrenPage() {
               </div>
 
               <div className="mb-5">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  나이 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={age}
+                  onChange={(e) => setAge(e.target.value === '' ? '' : parseInt(e.target.value))}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-gray-900"
+                  required
+                >
+                  <option value="">나이를 선택하세요</option>
+                  <option value="0">만 0세</option>
+                  <option value="1">만 1세</option>
+                  <option value="2">만 2세</option>
+                  <option value="3">만 3세</option>
+                  <option value="4">만 4세</option>
+                  <option value="5">만 5세</option>
+                </select>
+              </div>
+
+              <div className="mb-5">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">생년월일</label>
                 <input
                   type="date"
@@ -281,6 +311,11 @@ export default function ChildrenPage() {
                       삭제
                     </button>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-gray-700 mb-3">
+                  <span className="text-lg">👶</span>
+                  <span className="font-medium">만 {child.age}세</span>
                 </div>
 
                 {child.birth_date && (

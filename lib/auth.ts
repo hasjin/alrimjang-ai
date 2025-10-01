@@ -1,7 +1,10 @@
 import { AuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import { Adapter, AdapterUser, AdapterAccount, AdapterSession, VerificationToken } from 'next-auth/adapters'
 import pool from './db'
+
+const IS_DEV = process.env.NODE_ENV === 'development'
 
 // Custom PostgreSQL Adapter for alrimjang schema
 function CustomPgAdapter(): Adapter {
@@ -111,23 +114,59 @@ function CustomPgAdapter(): Adapter {
 }
 
 export const authOptions: AuthOptions = {
-  adapter: CustomPgAdapter(),
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
+  adapter: IS_DEV ? undefined : CustomPgAdapter(),
+  providers: IS_DEV
+    ? [
+        // 개발 환경: 자동 로그인
+        CredentialsProvider({
+          name: 'Development',
+          credentials: {},
+          async authorize() {
+            return {
+              id: 'dev-user-hasjin',
+              email: 'hasjin9@gmail.com',
+              name: '개발자 (hasjin)',
+              image: null,
+            }
+          },
+        }),
+      ]
+    : [
+        // 프로덕션: Google OAuth
+        GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
+      ],
   pages: {
     signIn: '/auth/signin',
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
+    async session({ session, user, token }) {
+      if (IS_DEV) {
+        // 개발 환경에서는 JWT 사용
+        if (session.user && token) {
+          session.user.id = token.sub || 'dev-user-hasjin'
+          session.user.email = 'hasjin9@gmail.com'
+          session.user.name = '개발자 (hasjin)'
+        }
+      } else {
+        // 프로덕션에서는 DB 사용
+        if (session.user && user) {
+          session.user.id = user.id
+        }
       }
       return session
     },
+    async jwt({ token, user }) {
+      if (IS_DEV && user) {
+        token.sub = user.id
+      }
+      return token
+    },
+  },
+  session: {
+    strategy: IS_DEV ? 'jwt' : 'database',
   },
   secret: process.env.NEXTAUTH_SECRET,
 }

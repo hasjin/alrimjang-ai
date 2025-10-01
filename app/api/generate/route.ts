@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Anthropic from '@anthropic-ai/sdk'
-import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit'
+import { checkHearts, useHearts, HEART_COSTS } from '@/lib/rate-limit'
 import { DOCUMENT_TYPE_INFO, DocumentType } from '@/lib/document-prompts'
+import { searchKnowledge } from '@/lib/rag-knowledge'
 import pool from '@/lib/db'
 
 const anthropic = new Anthropic({
@@ -19,6 +20,8 @@ interface RequestBody {
   tone?: string
   targetType?: string
   isRegenerate?: boolean
+  curriculum?: string
+  useRAG?: boolean
 }
 
 export async function POST(req: NextRequest) {
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: RequestBody = await req.json()
-    const { documentType, childId, childName, inputData, style, tone, targetType, isRegenerate } = body
+    const { documentType, childId, childName, inputData, style, tone, targetType, isRegenerate, curriculum, useRAG } = body
 
     // 입력 검증
     if (!documentType || !childName || !inputData || !style) {
@@ -51,23 +54,39 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 사용량 제한 확인 (재생성 첫 회는 무료)
-    let rateLimitResult
+    // 하트 비용 계산
+    let heartsRequired = HEART_COSTS.GENERATE
+    if (useRAG) {
+      heartsRequired = HEART_COSTS.GENERATE * HEART_COSTS.RAG_MULTIPLIER // 30 하트
+    }
+
+    // 하트 확인 (재생성 첫 회는 무료)
+    let heartsCheck
     if (!isRegenerate) {
-      rateLimitResult = await checkRateLimit(session.user.id)
-      if (!rateLimitResult.allowed) {
+      heartsCheck = await checkHearts(session.user.id, heartsRequired, session.user.email || undefined)
+
+      if (!heartsCheck.allowed) {
         return NextResponse.json(
           {
-            error: '일일 생성 횟수를 초과했습니다.',
-            remaining: 0,
-            resetAt: rateLimitResult.resetAt.toISOString(),
+            error: useRAG
+              ? `RAG 기능은 ${heartsRequired} 하트를 사용합니다. 남은 하트(${heartsCheck.remaining}❤️)가 부족합니다.`
+              : `하트가 부족합니다. 필요: ${heartsRequired}❤️, 남은 하트: ${heartsCheck.remaining}❤️`,
+            remaining: heartsCheck.remaining,
+            resetAt: heartsCheck.resetAt.toISOString(),
           },
           { status: 429 }
         )
       }
     } else {
-      // 재생성이어도 현재 사용량 정보는 필요
-      rateLimitResult = await checkRateLimit(session.user.id)
+      // 재생성이어도 현재 하트 정보는 필요
+      heartsCheck = await checkHearts(session.user.id, heartsRequired, session.user.email || undefined)
+    }
+
+    // RAG 지식베이스 검색
+    let ragKnowledge = ''
+    if (useRAG && curriculum) {
+      // area와 outputType은 선택사항, AI가 자동으로 적용
+      ragKnowledge = searchKnowledge(curriculum, '', '') // 전체 지식베이스 제공
     }
 
     // 문서 타입별 프롬프트 생성
@@ -78,6 +97,9 @@ export async function POST(req: NextRequest) {
       style,
       tone: tone || '균형',
       targetType: targetType || '개인',
+      curriculum,
+      useRAG,
+      ragKnowledge,
     })
 
     // Claude API 호출
@@ -97,16 +119,16 @@ export async function POST(req: NextRequest) {
       throw new Error('Unexpected response type')
     }
 
-    // 성공 시 사용량 증가 (재생성 첫 회는 제외)
+    // 성공 시 하트 차감 (재생성 첫 회는 제외)
     if (!isRegenerate) {
-      await incrementRateLimit(session.user.id)
+      await useHearts(session.user.id, heartsRequired)
     }
 
     // 문서 생성 이력 저장
     try {
       await pool.query(
-        'INSERT INTO alrimjang.documents (user_id, child_id, document_type, child_name, input_data, generated_content) VALUES ($1, $2, $3, $4, $5, $6)',
-        [session.user.id, childId || null, documentType, childName, JSON.stringify(inputData), result.text.trim()]
+        'INSERT INTO alrimjang.documents (user_id, child_id, document_type, child_name, input_data, generated_content, curriculum, area, output_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        [session.user.id, childId || null, documentType, childName, JSON.stringify(inputData), result.text.trim(), curriculum || null, null, '알림장']
       )
     } catch (historyError) {
       console.error('Failed to save document:', historyError)
@@ -115,7 +137,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       message: result.text.trim(),
-      remaining: isRegenerate ? rateLimitResult.remaining : rateLimitResult.remaining - 1,
+      remaining: isRegenerate ? heartsCheck.remaining : heartsCheck.remaining - heartsRequired,
     })
 
   } catch (error: unknown) {
