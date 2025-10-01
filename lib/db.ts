@@ -6,7 +6,8 @@ const pool = new Pool({
   database: process.env.PG_DB,
   user: process.env.PG_USER,
   password: process.env.PG_PASSWORD,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // SSL 비활성화 - 서버가 지원하지 않음
+  ssl: false,
 })
 
 export default pool
