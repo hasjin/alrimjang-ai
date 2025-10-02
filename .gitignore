@@ -45,5 +45,13 @@ next-env.d.ts
 DEPLOYMENT.md
 PROJECT_HISTORY.md
 CACHING_ANALYSIS.md
-DEVELOPMENT_LOG.md뒤
+DEVELOPMENT_LOG.md
+
+# SQL files and migration scripts
 lib/schema.sql
+lib/schema-*.sql
+scripts/migrate-*.ts
+
+# Personal/reference files
+/refer/
+*.local.md

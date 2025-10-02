@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     // DOCX 파일 생성
     const buffer = await Packer.toBuffer(doc)
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${encodeURIComponent(documentType || '알림장')}_${new Date().toISOString().split('T')[0]}.docx"`,
