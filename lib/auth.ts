@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { Adapter, AdapterUser, AdapterAccount, AdapterSession, VerificationToken } from 'next-auth/adapters'
 import pool from './db'
+import { generateUserKey, encryptUserKey } from './encryption'
 
 const IS_DEV = process.env.NODE_ENV === 'development'
 
@@ -10,10 +11,29 @@ const IS_DEV = process.env.NODE_ENV === 'development'
 function CustomPgAdapter(): Adapter {
   return {
     async createUser(user: Omit<AdapterUser, 'id'>) {
+      const userId = crypto.randomUUID()
+
+      // 사용자별 암호화 키 생성
+      const userKey = generateUserKey()
+      const encryptedKey = encryptUserKey(userKey)
+
       const result = await pool.query(
-        'INSERT INTO alrimjang.users (id, name, email, "emailVerified", image, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING *',
-        [crypto.randomUUID(), user.name, user.email, user.emailVerified, user.image]
+        'INSERT INTO alrimjang.users (id, name, email, "emailVerified", image, encrypted_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING *',
+        [userId, user.name, user.email, user.emailVerified, user.image, encryptedKey]
       )
+
+      // 초기 하트 부여 (40개)
+      try {
+        await pool.query(
+          `INSERT INTO alrimjang.hearts (user_id, remaining_hearts, total_earned, last_updated)
+           VALUES ($1, 40, 40, NOW())
+           ON CONFLICT (user_id) DO NOTHING`,
+          [userId]
+        )
+      } catch (error) {
+        console.error('Failed to create initial hearts:', error)
+      }
+
       return result.rows[0]
     },
     async getUser(id) {

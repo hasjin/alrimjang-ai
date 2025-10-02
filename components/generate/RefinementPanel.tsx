@@ -41,7 +41,7 @@ export default function RefinementPanel({
             onClick={() => setShowOptions(!showOptions)}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
-            {showOptions ? '접기 ▲' : '더보기 ▼'}
+            {showOptions ? '간편 옵션 접기 ▲' : '간편 옵션 보기 ▼'}
           </button>
         )}
       </div>
@@ -54,80 +54,86 @@ export default function RefinementPanel({
 
       {refinementCount < maxRefinements && (
         <>
-          {/* 기본 수정 옵션 */}
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <button
-              onClick={() => onRefine('shorten')}
-              disabled={isRefining || refinementCount >= maxRefinements}
-              className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              📉 더 짧게
-            </button>
-            <button
-              onClick={() => onRefine('lengthen')}
-              disabled={isRefining || refinementCount >= maxRefinements}
-              className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              📈 더 길게
-            </button>
-            <button
-              onClick={() => onRefine('remove_fluff')}
-              disabled={isRefining || refinementCount >= maxRefinements}
-              className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ✂️ 미사여구 줄이기
-            </button>
+          {/* 언어 기반 직접 수정 - 항상 표시 */}
+          <div className="mb-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-300">
+            <label className="block text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <span>💬 말로 수정 요청하기</span>
+              <span className="text-xs text-purple-600 bg-white px-2 py-0.5 rounded-full">NEW</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customRequest}
+                onChange={(e) => setCustomRequest(e.target.value)}
+                placeholder='예: "문장을 짧게 바꿔줘", "이모티콘을 더 넣어줘", "마지막 문장을 인사말로 바꿔줘"'
+                className="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 text-sm"
+                disabled={isRefining}
+                onKeyPress={(e) => e.key === 'Enter' && handleCustomRefine()}
+              />
+              <button
+                onClick={handleCustomRefine}
+                disabled={isRefining || !customRequest.trim() || refinementCount >= maxRefinements}
+                className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-md"
+              >
+                {isRefining ? '수정 중...' : '✨ 수정'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              💡 원하는 대로 자유롭게 요청하세요. AI가 이해하고 수정해드립니다.
+            </p>
           </div>
 
-          {/* 어조 조정 옵션 */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <button
-              onClick={() => onRefine('friendly')}
-              disabled={isRefining || refinementCount >= maxRefinements}
-              className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              💕 부드럽게
-            </button>
-            <button
-              onClick={() => onRefine('formal')}
-              disabled={isRefining || refinementCount >= maxRefinements}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              📋 격식있게
-            </button>
-            <button
-              onClick={() => onRefine('add_emoji')}
-              disabled={isRefining || refinementCount >= maxRefinements}
-              className="px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              😊 이모지 추가
-            </button>
-          </div>
-
+          {/* 간편 버튼 옵션 - 토글 가능 */}
           {showOptions && (
-            <div className="mt-3 p-4 bg-white rounded-lg border border-gray-300">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                직접 요청하기
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customRequest}
-                  onChange={(e) => setCustomRequest(e.target.value)}
-                  placeholder="예: 더 따뜻한 느낌으로, 존댓말로, 이모지 추가 등"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  disabled={isRefining}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCustomRefine()}
-                />
+            <>
+              <div className="grid grid-cols-3 gap-2 mb-2">
                 <button
-                  onClick={handleCustomRefine}
-                  disabled={isRefining || !customRequest.trim() || refinementCount >= maxRefinements}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => onRefine('shorten')}
+                  disabled={isRefining || refinementCount >= maxRefinements}
+                  className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  수정하기
+                  📉 더 짧게
+                </button>
+                <button
+                  onClick={() => onRefine('lengthen')}
+                  disabled={isRefining || refinementCount >= maxRefinements}
+                  className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  📈 더 길게
+                </button>
+                <button
+                  onClick={() => onRefine('remove_fluff')}
+                  disabled={isRefining || refinementCount >= maxRefinements}
+                  className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ✂️ 미사여구 줄이기
                 </button>
               </div>
-            </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => onRefine('friendly')}
+                  disabled={isRefining || refinementCount >= maxRefinements}
+                  className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  💕 부드럽게
+                </button>
+                <button
+                  onClick={() => onRefine('formal')}
+                  disabled={isRefining || refinementCount >= maxRefinements}
+                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  📋 격식있게
+                </button>
+                <button
+                  onClick={() => onRefine('add_emoji')}
+                  disabled={isRefining || refinementCount >= maxRefinements}
+                  className="px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-sm font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  😊 이모지 추가
+                </button>
+              </div>
+            </>
           )}
         </>
       )}

@@ -10,23 +10,6 @@ import ToastNotification from '@/components/ToastNotification'
 
 type DocumentType = '알림장' | '보육일지' | '관찰기록' | '발달평가' | '부모면담'
 
-interface Child {
-  id: number
-  name: string
-  birth_date: string | null
-  class_name: string | null
-  age: number
-}
-
-interface Document {
-  id: number
-  document_type: string
-  child_name: string
-  generated_content: string
-  created_at: string
-  input_data: any
-}
-
 export default function GeneratePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -34,11 +17,9 @@ export default function GeneratePage() {
   // Document type selection
   const [documentType, setDocumentType] = useState<DocumentType>('알림장')
 
-  // Child selection
-  const [children, setChildren] = useState<Child[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<number | null>(null)
-  const [manualChildName, setManualChildName] = useState('')
-  const [useManualName, setUseManualName] = useState(false)
+  // Child selection - 직접 입력만 사용
+  const [childName, setChildName] = useState('ㅇㅇ') // 기본값: 익명
+  const [childAge, setChildAge] = useState<number | ''>('') // 필수
 
   // 알림장 fields
   const [memo, setMemo] = useState('')
@@ -99,9 +80,6 @@ export default function GeneratePage() {
   const [originalInput, setOriginalInput] = useState('') // 사용자 원본 입력
   const [toastType, setToastType] = useState<'success' | 'error' | 'warning'>('success')
   const [regenerateCount, setRegenerateCount] = useState(0)
-  const [showPreviousDocs, setShowPreviousDocs] = useState(false)
-  const [previousDocs, setPreviousDocs] = useState<Document[]>([])
-  const [loadingDocs, setLoadingDocs] = useState(false)
   const [showForm, setShowForm] = useState(true)
 
   // 하트 시스템
@@ -115,10 +93,9 @@ export default function GeneratePage() {
     }
   }, [status, router])
 
-  // Fetch children and hearts
+  // Fetch hearts only
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchChildren()
       fetchRemainingHearts()
     }
   }, [status])
@@ -138,131 +115,10 @@ export default function GeneratePage() {
     }
   }
 
-  const fetchChildren = async () => {
-    try {
-      const response = await fetch('/api/children')
-      if (response.ok) {
-        const data = await response.json()
-        setChildren(data.children || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch children:', error)
-    }
-  }
-
-  const loadPreviousSettings = async () => {
-    if (!selectedChildId) return
-
-    setLoadingDocs(true)
-    try {
-      const response = await fetch(
-        `/api/children/${selectedChildId}/documents?type=${encodeURIComponent(documentType)}`
-      )
-      if (response.ok) {
-        const data = await response.json()
-        const docs = data.documents || []
-
-        if (docs.length === 0) {
-          setToastMessage('이전에 작성된 문서가 없습니다.')
-          setShowToast(true)
-          setTimeout(() => setShowToast(false), 3000)
-        } else {
-          // 가장 최근 문서의 설정 불러오기
-          const lastDoc = docs[0]
-          const inputData = lastDoc.input_data || {}
-
-          // 알림장 설정 불러오기
-          if (documentType === '알림장') {
-            if (inputData.tone) setTone(inputData.tone)
-            if (inputData.targetType) setTargetType(inputData.targetType)
-            if (inputData.style) setStyle(inputData.style)
-            if (inputData.memo) setMemo(inputData.memo)
-          }
-          // 보육일지 설정 불러오기
-          else if (documentType === '보육일지') {
-            if (inputData.playContent) setPlayContent(inputData.playContent)
-            if (inputData.teacherSupport) setTeacherSupport(inputData.teacherSupport)
-            if (inputData.evaluation) setEvaluation(inputData.evaluation)
-            if (inputData.date) setBoyukDate(inputData.date)
-          }
-          // 관찰기록 설정 불러오기
-          else if (documentType === '관찰기록') {
-            if (inputData.observation) setObservation(inputData.observation)
-            if (inputData.context) setContext(inputData.context)
-            if (inputData.date) setGwanchalDate(inputData.date)
-          }
-          // 발달평가 설정 불러오기
-          else if (documentType === '발달평가') {
-            if (inputData.period) setPeriod(inputData.period)
-            if (inputData.areas) setAreas(inputData.areas)
-          }
-          // 부모면담 설정 불러오기
-          else if (documentType === '부모면담') {
-            if (inputData.date) setMyeondamDate(inputData.date)
-            if (inputData.method) setMethod(inputData.method)
-            if (inputData.teacherOpinion) setTeacherOpinion(inputData.teacherOpinion)
-            if (inputData.parentOpinion) setParentOpinion(inputData.parentOpinion)
-            if (inputData.topics) setTopics(inputData.topics)
-          }
-
-          setToastMessage('이전 설정을 불러왔습니다!')
-          setShowToast(true)
-          setTimeout(() => setShowToast(false), 3000)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load previous settings:', error)
-      setToastMessage('이전 설정을 불러오는데 실패했습니다.')
-      setShowToast(true)
-      setTimeout(() => setShowToast(false), 3000)
-    } finally {
-      setLoadingDocs(false)
-    }
-  }
-
-  const fetchPreviousDocuments = async () => {
-    if (!selectedChildId) return
-
-    setLoadingDocs(true)
-    try {
-      const response = await fetch(
-        `/api/children/${selectedChildId}/documents?type=${encodeURIComponent(documentType)}`
-      )
-      if (response.ok) {
-        const data = await response.json()
-        const docs = data.documents || []
-        setPreviousDocs(docs)
-        setShowPreviousDocs(true)
-
-        if (docs.length === 0) {
-          setToastMessage('이전에 작성된 문서가 없습니다.')
-          setShowToast(true)
-          setTimeout(() => setShowToast(false), 3000)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch previous documents:', error)
-      setToastMessage('문서를 불러오는데 실패했습니다.')
-      setShowToast(true)
-      setTimeout(() => setShowToast(false), 3000)
-    } finally {
-      setLoadingDocs(false)
-    }
-  }
-
-
-  // 선택된 원아의 나이를 기반으로 커리큘럼 자동 결정
-  const getCurriculumFromAge = (age: number | null): string => {
-    if (age === null) return ''
+  // 선택된 나이를 기반으로 커리큘럼 자동 결정
+  const getCurriculumFromAge = (age: number | ''): string => {
+    if (age === '') return ''
     return age <= 2 ? 'standard-v4' : 'nuri-2019'
-  }
-
-  const getChildName = (): string => {
-    if (useManualName) {
-      return manualChildName
-    }
-    const child = children.find((c) => c.id === selectedChildId)
-    return child?.name || ''
   }
 
   const getInputData = (): Record<string, any> => {
@@ -283,14 +139,9 @@ export default function GeneratePage() {
   }
 
   const validateForm = (): string | null => {
-    const childName = getChildName()
-    if (!childName) {
-      return '아이 이름을 선택하거나 입력해주세요.'
-    }
-
-    // 직접 입력 시 나이 필수
-    if (useManualName && manualAge === '') {
-      return '직접 입력 시 나이를 선택해주세요.'
+    // 나이 필수
+    if (childAge === '') {
+      return '나이를 선택해주세요. (교육과정 적용을 위해 필요합니다)'
     }
 
     switch (documentType) {
@@ -345,12 +196,7 @@ export default function GeneratePage() {
     }
 
     try {
-      const childName = getChildName()
       const inputData = getInputData()
-
-      // 나이 결정: 등록된 원아 or 직접 입력
-      const selectedChild = children.find((c) => c.id === selectedChildId)
-      const childAge = useManualName ? (manualAge as number) : (selectedChild?.age || null)
 
       // 커리큘럼 자동 결정
       const determinedCurriculum = useCurriculum ? getCurriculumFromAge(childAge) : undefined
@@ -362,8 +208,8 @@ export default function GeneratePage() {
         },
         body: JSON.stringify({
           documentType,
-          childId: useManualName ? null : selectedChildId,
-          childName,
+          childName: childName || 'ㅇㅇ', // 기본값: 익명
+          childAge: childAge,
           inputData,
           style,
           tone: documentType === '알림장' ? tone : undefined,
@@ -593,82 +439,45 @@ export default function GeneratePage() {
               </div>
             </div>
 
-            {/* Child Selection */}
-            <div>
-              <label className="block text-base font-bold text-gray-900 mb-3">
-                아이 선택
-              </label>
-              <div className="space-y-3">
-                <div className="flex gap-3">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="childInputType"
-                      checked={!useManualName}
-                      onChange={() => setUseManualName(false)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-semibold text-gray-700">
-                      등록된 아이 선택
-                    </span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="childInputType"
-                      checked={useManualName}
-                      onChange={() => setUseManualName(true)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-semibold text-gray-700">직접 입력</span>
-                  </label>
-                </div>
+            {/* Child Name & Age Input */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-base font-bold text-gray-900 mb-2">
+                  아이 이름 (선택)
+                </label>
+                <input
+                  type="text"
+                  value={childName}
+                  onChange={(e) => setChildName(e.target.value)}
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
+                  placeholder="예: 민준 (빈칸시 'ㅇㅇ'으로 표시)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 입력하지 않으면 "ㅇㅇ"으로 표시됩니다
+                </p>
+              </div>
 
-                {!useManualName ? (
-                  <div className="flex gap-3">
-                    <select
-                      value={selectedChildId || ''}
-                      onChange={(e) => setSelectedChildId(Number(e.target.value) || null)}
-                      className="flex-1 px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
-                    >
-                      <option value="">아이를 선택하세요</option>
-                      {children.map((child) => (
-                        <option key={child.id} value={child.id}>
-                          {child.name}
-                          {child.class_name ? ` (${child.class_name})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedChildId && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={loadPreviousSettings}
-                          disabled={loadingDocs}
-                          className="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 font-semibold rounded-lg transition disabled:opacity-50"
-                        >
-                          {loadingDocs ? '로딩...' : '이전 설정 불러오기'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={fetchPreviousDocuments}
-                          disabled={loadingDocs}
-                          className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold rounded-lg transition disabled:opacity-50"
-                        >
-                          이전 문서 보기
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={manualChildName}
-                    onChange={(e) => setManualChildName(e.target.value)}
-                    className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
-                    placeholder="아이 이름을 입력하세요"
-                  />
-                )}
+              <div>
+                <label className="block text-base font-bold text-gray-900 mb-2">
+                  나이 <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={childAge}
+                  onChange={(e) => setChildAge(e.target.value === '' ? '' : parseInt(e.target.value))}
+                  className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
+                  required
+                >
+                  <option value="">나이 선택</option>
+                  <option value="0">만 0세</option>
+                  <option value="1">만 1세</option>
+                  <option value="2">만 2세</option>
+                  <option value="3">만 3세</option>
+                  <option value="4">만 4세</option>
+                  <option value="5">만 5세</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  📚 교육과정 적용을 위해 필수입니다
+                </p>
               </div>
             </div>
 
@@ -703,29 +512,6 @@ export default function GeneratePage() {
                     ))}
                   </div>
                 </div>
-
-                {/* 직접 입력 시 나이 선택 */}
-                {useManualName && (
-                  <div>
-                    <label className="block text-base font-bold text-gray-900 mb-2">
-                      나이 <span className="text-red-600">*</span>
-                    </label>
-                    <select
-                      value={manualAge}
-                      onChange={(e) => setManualAge(e.target.value === '' ? '' : parseInt(e.target.value))}
-                      className="w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
-                      required
-                    >
-                      <option value="">나이를 선택하세요</option>
-                      <option value="0">만 0세</option>
-                      <option value="1">만 1세</option>
-                      <option value="2">만 2세</option>
-                      <option value="3">만 3세</option>
-                      <option value="4">만 4세</option>
-                      <option value="5">만 5세</option>
-                    </select>
-                  </div>
-                )}
 
                 {/* Memo - 메인 입력 */}
                 <div>
@@ -1151,72 +937,6 @@ export default function GeneratePage() {
         {error && (
           <div className="bg-red-50 border-2 border-red-300 text-red-800 font-semibold px-6 py-4 rounded-lg mb-6 text-base">
             {error}
-          </div>
-        )}
-
-        {/* Previous documents modal */}
-        {showPreviousDocs && previousDocs.length > 0 && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-              <div className="flex justify-between items-center p-6 border-b">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  이전 {documentType} ({previousDocs.length}개)
-                </h2>
-                <button
-                  onClick={() => setShowPreviousDocs(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-80px)]">
-                {previousDocs.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="border-2 border-gray-200 rounded-lg p-5 hover:border-purple-300 transition bg-gray-50"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-semibold text-gray-700">
-                          {new Date(doc.created_at).toLocaleDateString('ko-KR')}
-                        </span>
-                        <div className="flex gap-2 text-xs">
-                          {doc.input_data?.tone && (
-                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
-                              톤: {doc.input_data.tone}
-                            </span>
-                          )}
-                          {doc.input_data?.targetType && (
-                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                              대상: {doc.input_data.targetType}
-                            </span>
-                          )}
-                          {doc.input_data?.style && (
-                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-                              {doc.input_data.style}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(doc.generated_content)
-                          setToastMessage('이전 문서가 복사되었습니다!')
-                          setShowToast(true)
-                          setTimeout(() => setShowToast(false), 3000)
-                        }}
-                        className="text-sm px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition"
-                      >
-                        복사
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                      {doc.generated_content}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 

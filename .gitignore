@@ -5,6 +5,7 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+/refer/*
 
 # testing
 /coverage
@@ -44,4 +45,5 @@ next-env.d.ts
 DEPLOYMENT.md
 PROJECT_HISTORY.md
 CACHING_ANALYSIS.md
+DEVELOPMENT_LOG.md뒤
 lib/schema.sql

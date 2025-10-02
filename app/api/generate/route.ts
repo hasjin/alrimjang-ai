@@ -6,6 +6,7 @@ import { checkHearts, useHearts, HEART_COSTS } from '@/lib/rate-limit'
 import { DOCUMENT_TYPE_INFO, DocumentType } from '@/lib/document-prompts'
 import { searchKnowledge } from '@/lib/rag-knowledge'
 import { buildCachedPrompt, buildRAGSystemMessage, buildGeneralSystemMessage, buildUserPrompt } from '@/lib/prompt-caching'
+import { encryptContent, decryptUserKey } from '@/lib/encryption'
 import pool from '@/lib/db'
 
 const anthropic = new Anthropic({
@@ -14,8 +15,8 @@ const anthropic = new Anthropic({
 
 interface RequestBody {
   documentType: DocumentType
-  childId?: number
   childName: string
+  childAge?: number
   inputData: Record<string, any>
   style: string
   tone?: string
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: RequestBody = await req.json()
-    const { documentType, childId, childName, inputData, style, tone, targetType, isRegenerate, curriculum, useRAG } = body
+    const { documentType, childName, childAge, inputData, style, tone, targetType, isRegenerate, curriculum, useRAG } = body
 
     // 입력 검증
     if (!documentType || !childName || !inputData || !style) {
@@ -157,11 +158,25 @@ export async function POST(req: NextRequest) {
       await useHearts(session.user.id, heartsRequired)
     }
 
-    // 문서 생성 이력 저장
+    // 문서 생성 이력 저장 (암호화 적용)
     try {
+      // 사용자 암호화 키 조회
+      const userKeyResult = await pool.query(
+        'SELECT encrypted_key FROM alrimjang.users WHERE id = $1',
+        [session.user.id]
+      )
+
+      let encryptedContent = result.text.trim()
+
+      // 암호화 키가 있으면 암호화
+      if (userKeyResult.rows[0]?.encrypted_key) {
+        const userKey = decryptUserKey(userKeyResult.rows[0].encrypted_key)
+        encryptedContent = encryptContent(result.text.trim(), userKey)
+      }
+
       await pool.query(
-        'INSERT INTO alrimjang.documents (user_id, child_id, document_type, child_name, input_data, generated_content, curriculum, area, output_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-        [session.user.id, childId || null, documentType, childName, JSON.stringify(inputData), result.text.trim(), curriculum || null, null, '알림장']
+        'INSERT INTO alrimjang.documents (user_id, document_type, child_name, input_data, generated_content, curriculum, area, output_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [session.user.id, documentType, childName || 'ㅇㅇ', JSON.stringify({ ...inputData, childAge }), encryptedContent, curriculum || null, null, '알림장']
       )
     } catch (historyError) {
       console.error('Failed to save document:', historyError)

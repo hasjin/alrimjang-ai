@@ -1,8 +1,7 @@
-import redis from './redis'
+import pool from './db'
 
 // 하트 시스템 (10배 스케일)
 const DAILY_HEARTS = 40 // 무료 플랜: 일 40 하트
-const WINDOW_SIZE = 24 * 60 * 60 // 24 hours in seconds
 
 // 하트 비용
 export const HEART_COSTS = {
@@ -20,6 +19,80 @@ export interface RateLimitResult {
   resetAt: Date
 }
 
+// KST 기준 다음 06:00 계산
+function getNextResetTime(): Date {
+  const now = new Date()
+  const kstOffset = 9 * 60 * 60 * 1000 // KST = UTC+9
+  const kstNow = new Date(now.getTime() + kstOffset)
+
+  const today6am = new Date(kstNow)
+  today6am.setUTCHours(6 - 9, 0, 0, 0) // 6AM KST = 21:00 UTC previous day (or 9PM)
+
+  if (kstNow.getUTCHours() >= 6) {
+    // 이미 오늘 06시 지남 -> 내일 06시
+    today6am.setUTCDate(today6am.getUTCDate() + 1)
+  }
+
+  return new Date(today6am.getTime() - kstOffset) // UTC로 변환
+}
+
+// 하트 리셋 필요 여부 확인 및 자동 리셋
+async function checkAndResetHearts(userId: string): Promise<void> {
+  try {
+    const result = await pool.query(
+      'SELECT remaining_hearts, reset_at FROM alrimjang.hearts WHERE user_id = $1',
+      [userId]
+    )
+
+    if (result.rows.length === 0) {
+      // 하트 레코드가 없으면 초기화 (신규 사용자)
+      const nextReset = getNextResetTime()
+      await pool.query(
+        `INSERT INTO alrimjang.hearts (user_id, remaining_hearts, total_earned, reset_at, last_updated)
+         VALUES ($1, $2, $2, $3, NOW())
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId, DAILY_HEARTS, nextReset]
+      )
+      return
+    }
+
+    const { remaining_hearts, reset_at } = result.rows[0]
+    const now = new Date()
+
+    // 리셋 시간이 지났으면 하트 리셋
+    if (reset_at && new Date(reset_at) <= now) {
+      const nextReset = getNextResetTime()
+
+      await pool.query(
+        `UPDATE alrimjang.hearts
+         SET remaining_hearts = $1,
+             total_earned = total_earned + $1,
+             reset_at = $2,
+             last_updated = NOW()
+         WHERE user_id = $3`,
+        [DAILY_HEARTS, nextReset, userId]
+      )
+
+      // 하트 리셋 이력 기록
+      await pool.query(
+        `INSERT INTO alrimjang.heart_usage_logs (user_id, action_type, hearts_used, hearts_remaining, description)
+         VALUES ($1, 'reset', $2, $2, '일일 하트 리셋 (06:00 KST)')`,
+        [userId, DAILY_HEARTS]
+      )
+    } else if (!reset_at) {
+      // reset_at이 없으면 설정 (기존 사용자 마이그레이션)
+      const nextReset = getNextResetTime()
+      await pool.query(
+        'UPDATE alrimjang.hearts SET reset_at = $1 WHERE user_id = $2',
+        [nextReset, userId]
+      )
+    }
+  } catch (error) {
+    console.error('Heart reset check error:', error)
+    throw error
+  }
+}
+
 // 하트 사용 가능 여부 확인 (하트 차감 없음, 조회만)
 export async function checkHearts(userId: string, requiredHearts: number, userEmail?: string): Promise<RateLimitResult> {
   // 개발 환경에서 특정 이메일은 무제한 허용
@@ -27,54 +100,44 @@ export async function checkHearts(userId: string, requiredHearts: number, userEm
     return {
       allowed: true,
       remaining: 9999,
-      resetAt: new Date(Date.now() + (WINDOW_SIZE * 1000)),
+      resetAt: getNextResetTime(),
     }
   }
 
-  const key = `hearts:${userId}`
-
   try {
-    const now = Date.now()
-    const windowStart = now - (WINDOW_SIZE * 1000)
+    // 하트 리셋 체크 및 자동 리셋
+    await checkAndResetHearts(userId)
 
-    // Remove old entries outside the 24-hour window
-    await redis.zremrangebyscore(key, 0, windowStart)
+    // 현재 하트 조회
+    const result = await pool.query(
+      'SELECT remaining_hearts, reset_at FROM alrimjang.hearts WHERE user_id = $1',
+      [userId]
+    )
 
-    // Calculate total hearts used
-    const entries = await redis.zrange(key, 0, -1, 'WITHSCORES')
-    let totalUsed = 0
-    for (let i = 0; i < entries.length; i += 2) {
-      const hearts = parseInt(entries[i])
-      totalUsed += hearts
-    }
-
-    const remaining = Math.max(0, DAILY_HEARTS - totalUsed)
-
-    if (remaining < requiredHearts) {
-      // Get the oldest timestamp to calculate reset time
-      const oldestEntry = await redis.zrange(key, 0, 0, 'WITHSCORES')
-      const oldestTimestamp = oldestEntry.length > 1 ? parseInt(oldestEntry[1]) : now
-      const resetAt = new Date(oldestTimestamp + (WINDOW_SIZE * 1000))
-
+    if (result.rows.length === 0) {
+      // 방금 생성된 경우
       return {
-        allowed: false,
-        remaining,
-        resetAt,
+        allowed: requiredHearts <= DAILY_HEARTS,
+        remaining: DAILY_HEARTS,
+        resetAt: getNextResetTime(),
       }
     }
 
+    const { remaining_hearts, reset_at } = result.rows[0]
+    const remaining = remaining_hearts || 0
+
     return {
-      allowed: true,
+      allowed: remaining >= requiredHearts,
       remaining,
-      resetAt: new Date(now + (WINDOW_SIZE * 1000)),
+      resetAt: reset_at ? new Date(reset_at) : getNextResetTime(),
     }
   } catch (error) {
     console.error('Hearts check error:', error)
-    // Fail open - allow the request if Redis is down
+    // Fail open - allow the request if DB is down
     return {
       allowed: true,
       remaining: DAILY_HEARTS,
-      resetAt: new Date(Date.now() + (WINDOW_SIZE * 1000)),
+      resetAt: getNextResetTime(),
     }
   }
 }
@@ -85,18 +148,35 @@ export async function checkRateLimit(userId: string, userEmail?: string): Promis
 }
 
 // 하트 차감 (실제 사용)
-export async function useHearts(userId: string, hearts: number): Promise<void> {
-  const key = `hearts:${userId}`
-  const now = Date.now()
-
+export async function useHearts(userId: string, hearts: number, description?: string): Promise<void> {
   try {
-    // Store: hearts used as score, timestamp as member
-    await redis.zadd(key, now, `${hearts}`)
+    // 하트 차감
+    const result = await pool.query(
+      `UPDATE alrimjang.hearts
+       SET remaining_hearts = remaining_hearts - $1,
+           last_updated = NOW()
+       WHERE user_id = $2
+       RETURNING remaining_hearts`,
+      [hearts, userId]
+    )
 
-    // Set expiry on the key (25 hours to be safe)
-    await redis.expire(key, WINDOW_SIZE + 3600)
+    const remainingHearts = result.rows[0]?.remaining_hearts || 0
+
+    // 사용 이력 기록
+    await pool.query(
+      `INSERT INTO alrimjang.heart_usage_logs (user_id, action_type, hearts_used, hearts_remaining, description)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        userId,
+        hearts === HEART_COSTS.GENERATE ? 'generate' : hearts === HEART_COSTS.REFINE ? 'refine' : 'use',
+        -hearts, // 음수로 저장 (사용)
+        remainingHearts,
+        description || '하트 사용'
+      ]
+    )
   } catch (error) {
     console.error('Hearts usage error:', error)
+    throw error
   }
 }
 
@@ -107,39 +187,47 @@ export async function incrementRateLimit(userId: string): Promise<void> {
 
 // 남은 하트 조회
 export async function getRemainingHearts(userId: string): Promise<{ remaining: number; resetAt: Date | null }> {
-  const key = `hearts:${userId}`
-
   try {
-    const now = Date.now()
-    const windowStart = now - (WINDOW_SIZE * 1000)
+    // 하트 리셋 체크 및 자동 리셋
+    await checkAndResetHearts(userId)
 
-    // Remove old entries
-    await redis.zremrangebyscore(key, 0, windowStart)
+    const result = await pool.query(
+      'SELECT remaining_hearts, reset_at FROM alrimjang.hearts WHERE user_id = $1',
+      [userId]
+    )
 
-    // Calculate total hearts used
-    const entries = await redis.zrange(key, 0, -1, 'WITHSCORES')
-    let totalUsed = 0
-    for (let i = 0; i < entries.length; i += 2) {
-      const hearts = parseInt(entries[i])
-      totalUsed += hearts
+    if (result.rows.length === 0) {
+      return { remaining: DAILY_HEARTS, resetAt: getNextResetTime() }
     }
 
-    const remaining = Math.max(0, DAILY_HEARTS - totalUsed)
+    const { remaining_hearts, reset_at } = result.rows[0]
 
-    // Get reset time
-    let resetAt: Date | null = null
-    if (entries.length > 0) {
-      const oldestEntry = await redis.zrange(key, 0, 0, 'WITHSCORES')
-      if (oldestEntry.length > 1) {
-        const oldestTimestamp = parseInt(oldestEntry[1])
-        resetAt = new Date(oldestTimestamp + (WINDOW_SIZE * 1000))
-      }
+    return {
+      remaining: remaining_hearts || 0,
+      resetAt: reset_at ? new Date(reset_at) : getNextResetTime()
     }
-
-    return { remaining, resetAt }
   } catch (error) {
     console.error('Get remaining hearts error:', error)
     return { remaining: DAILY_HEARTS, resetAt: null }
+  }
+}
+
+// 하트 사용 이력 조회
+export async function getHeartUsageLogs(userId: string, limit = 50): Promise<any[]> {
+  try {
+    const result = await pool.query(
+      `SELECT action_type, hearts_used, hearts_remaining, description, created_at
+       FROM alrimjang.heart_usage_logs
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    )
+
+    return result.rows
+  } catch (error) {
+    console.error('Get heart usage logs error:', error)
+    return []
   }
 }
 
