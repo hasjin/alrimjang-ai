@@ -4,15 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Stats {
-  users: {
-    total: number
-    today: number
-    thisWeek: number
-    active: number
-  }
-  documents: {
-    total: number
-    today: number
+  overview: {
+    totalUsers: number
+    todayUsers: number
+    weekUsers: number
+    activeUsers: number
+    totalDocuments: number
+    todayDocuments: number
   }
   hearts: {
     totalEarned: number
@@ -23,11 +21,16 @@ interface Stats {
     document_type: string
     count: number
   }>
-  growth: Array<{
-    date: string
-    new_users: number
-    documents_created: number
-  }>
+  growth: {
+    users: Array<{
+      date: string
+      count: number
+    }>
+    documents: Array<{
+      date: string
+      count: number
+    }>
+  }
 }
 
 export default function AdminDashboard() {
@@ -98,28 +101,28 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="전체 사용자"
-            value={stats.users.total}
-            subtitle={`오늘 +${stats.users.today}`}
+            value={stats.overview.totalUsers}
+            subtitle={`오늘 +${stats.overview.todayUsers}`}
             icon="👥"
             color="blue"
           />
           <StatCard
             title="활성 사용자"
-            value={stats.users.active}
-            subtitle={`이번 주 +${stats.users.thisWeek}`}
+            value={stats.overview.activeUsers}
+            subtitle={`이번 주 +${stats.overview.weekUsers}`}
             icon="✨"
             color="green"
           />
           <StatCard
             title="생성 문서"
-            value={stats.documents.total}
-            subtitle={`오늘 +${stats.documents.today}`}
+            value={stats.overview.totalDocuments}
+            subtitle={`오늘 +${stats.overview.todayDocuments}`}
             icon="📄"
             color="purple"
           />
           <StatCard
             title="하트 사용률"
-            value={`${Math.round((stats.hearts.totalUsed / stats.hearts.totalEarned) * 100)}%`}
+            value={`${stats.hearts.totalEarned > 0 ? Math.round((stats.hearts.totalUsed / stats.hearts.totalEarned) * 100) : 0}%`}
             subtitle={`사용: ${stats.hearts.totalUsed} / ${stats.hearts.totalEarned}`}
             icon="❤️"
             color="pink"
@@ -180,19 +183,22 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {stats.growth.slice(0, 10).map((day) => (
-                  <tr key={day.date}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(day.date).toLocaleDateString('ko-KR')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      +{day.new_users}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {day.documents_created}
-                    </td>
-                  </tr>
-                ))}
+                {stats.growth.users.slice(0, 10).map((day, index) => {
+                  const docDay = stats.growth.documents.find(d => d.date === day.date)
+                  return (
+                    <tr key={day.date}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(day.date).toLocaleDateString('ko-KR')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        +{day.count}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {docDay?.count || 0}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
