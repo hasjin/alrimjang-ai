@@ -39,3 +39,7 @@ next-env.d.ts
 # IDE
 .idea
 .vscode
+
+# Deployment documentation with sensitive info
+DEPLOYMENT.md
+PROJECT_HISTORY.md
