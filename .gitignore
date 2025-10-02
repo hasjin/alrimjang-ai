@@ -44,3 +44,4 @@ next-env.d.ts
 DEPLOYMENT.md
 PROJECT_HISTORY.md
 CACHING_ANALYSIS.md
+lib/schema.sql
