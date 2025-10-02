@@ -143,12 +143,18 @@ export default function AdminDashboard() {
         </div>
 
         {/* 빠른 액션 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <ActionCard
             title="사용자 관리"
             description="사용자 목록 조회 및 하트 지급/회수"
             icon="👤"
             onClick={() => router.push('/admin/users')}
+          />
+          <ActionCard
+            title="2FA 설정"
+            description="2단계 인증 설정 및 관리"
+            icon="🔐"
+            onClick={() => router.push('/admin/settings')}
           />
           <ActionCard
             title="문서 모니터링"
