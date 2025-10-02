@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { checkHearts, useHearts, HEART_COSTS } from '@/lib/rate-limit'
 import { DOCUMENT_TYPE_INFO, DocumentType } from '@/lib/document-prompts'
 import { searchKnowledge } from '@/lib/rag-knowledge'
+import { buildCachedPrompt, buildRAGSystemMessage, buildGeneralSystemMessage, buildUserPrompt } from '@/lib/prompt-caching'
 import pool from '@/lib/db'
 
 const anthropic = new Anthropic({
@@ -89,29 +90,61 @@ export async function POST(req: NextRequest) {
       ragKnowledge = searchKnowledge(curriculum, '', '') // 전체 지식베이스 제공
     }
 
-    // 문서 타입별 프롬프트 생성
-    const promptFn = DOCUMENT_TYPE_INFO[documentType].promptFn
-    const prompt = promptFn({
-      childName,
-      inputData,
-      style,
-      tone: tone || '균형',
-      targetType: targetType || '개인',
-      curriculum,
-      useRAG,
-      ragKnowledge,
-    })
+    // 프롬프트 캐싱 전략:
+    // 1. RAG 모드: 지식베이스를 시스템 메시지로 캐싱 (큰 절감 효과)
+    // 2. 일반 모드: 기본 가이드라인을 시스템 메시지로 캐싱
+    let cachedPrompt
 
-    // Claude API 호출
+    if (useRAG && ragKnowledge) {
+      // RAG 모드: 지식베이스 캐싱
+      const systemMessage = buildRAGSystemMessage(ragKnowledge)
+      const userMessage = buildUserPrompt({
+        documentType,
+        childName,
+        memo: inputData.memo || '',
+        style,
+        tone: tone || '균형',
+        targetType: targetType || '개인',
+      })
+
+      cachedPrompt = buildCachedPrompt({
+        staticContent: systemMessage,
+        dynamicPrompt: userMessage,
+        enableCaching: true,
+      })
+    } else {
+      // 일반 모드: 기존 프롬프트 생성 방식 유지 (캐싱은 가이드라인만)
+      const promptFn = DOCUMENT_TYPE_INFO[documentType].promptFn
+      const prompt = promptFn({
+        childName,
+        inputData,
+        style,
+        tone: tone || '균형',
+        targetType: targetType || '개인',
+        curriculum,
+        useRAG,
+        ragKnowledge,
+      })
+
+      // 일반 가이드라인 캐싱
+      const systemMessage = buildGeneralSystemMessage()
+      cachedPrompt = buildCachedPrompt({
+        staticContent: systemMessage,
+        dynamicPrompt: prompt,
+        enableCaching: true,
+      })
+    }
+
+    // Claude API 호출 (프롬프트 캐싱 활성화)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 2048,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        }
-      ],
+      system: cachedPrompt.system,
+      messages: cachedPrompt.messages,
+    }, {
+      headers: {
+        'anthropic-beta': 'prompt-caching-2024-07-31',
+      },
     })
 
     const result = message.content[0]

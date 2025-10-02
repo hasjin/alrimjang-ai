@@ -43,3 +43,4 @@ next-env.d.ts
 # Deployment documentation with sensitive info
 DEPLOYMENT.md
 PROJECT_HISTORY.md
+CACHING_ANALYSIS.md
