@@ -71,13 +71,88 @@ export async function GET(req: NextRequest) {
     )
     const activeUsers = parseInt(activeUsersResult.rows[0].count)
 
-    // 전체 하트 사용량
-    const totalHeartsResult = await pool.query(
-      'SELECT SUM(total_earned) as total, SUM(remaining_hearts) as remaining FROM alrimjang.hearts'
+    // 일별 문서 생성 패턴 (최근 30일)
+    const dailyDocumentsResult = await pool.query(
+      `SELECT
+        DATE(created_at) as date,
+        COUNT(*) as total_count,
+        COUNT(DISTINCT user_id) as active_users,
+        document_type,
+        COUNT(*) FILTER (WHERE curriculum IS NOT NULL) as with_curriculum,
+        AVG(CASE WHEN input_data::text LIKE '%useRAG%true%' THEN 1 ELSE 0 END) * 100 as rag_usage_rate
+       FROM alrimjang.documents
+       WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+       GROUP BY DATE(created_at), document_type
+       ORDER BY date DESC, total_count DESC`
     )
-    const totalHeartsEarned = parseInt(totalHeartsResult.rows[0].total || 0)
-    const totalHeartsRemaining = parseInt(totalHeartsResult.rows[0].remaining || 0)
-    const totalHeartsUsed = totalHeartsEarned - totalHeartsRemaining
+
+    // 시간대별 사용 패턴 (24시간)
+    const hourlyPatternResult = await pool.query(
+      `SELECT
+        EXTRACT(HOUR FROM created_at AT TIME ZONE 'Asia/Seoul') as hour,
+        COUNT(*) as count
+       FROM alrimjang.documents
+       WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+       GROUP BY EXTRACT(HOUR FROM created_at AT TIME ZONE 'Asia/Seoul')
+       ORDER BY hour ASC`
+    )
+
+    // 사용자 행동 인사이트
+    const userBehaviorResult = await pool.query(
+      `SELECT
+        COUNT(DISTINCT user_id) as total_users,
+        AVG(doc_count) as avg_docs_per_user,
+        MAX(doc_count) as max_docs_per_user,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY doc_count) as median_docs_per_user
+       FROM (
+         SELECT user_id, COUNT(*) as doc_count
+         FROM alrimjang.documents
+         WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+         GROUP BY user_id
+       ) user_stats`
+    )
+
+    // 재방문율 (7일 이내 재사용)
+    const retentionResult = await pool.query(
+      `SELECT
+        COUNT(DISTINCT CASE WHEN days_since_first <= 7 THEN user_id END)::FLOAT /
+        NULLIF(COUNT(DISTINCT user_id), 0) * 100 as retention_rate_7days
+       FROM (
+         SELECT
+           user_id,
+           EXTRACT(DAY FROM (MAX(created_at) - MIN(created_at))) as days_since_first
+         FROM alrimjang.documents
+         GROUP BY user_id
+         HAVING COUNT(*) > 1
+       ) retention_stats`
+    )
+
+    // 기능 사용 통계
+    const featureUsageResult = await pool.query(
+      `SELECT
+        COUNT(*) FILTER (WHERE curriculum IS NOT NULL) as curriculum_usage,
+        COUNT(*) FILTER (WHERE input_data::text LIKE '%useRAG%true%') as rag_usage,
+        COUNT(DISTINCT user_id) FILTER (WHERE curriculum IS NOT NULL) as curriculum_users,
+        COUNT(DISTINCT user_id) FILTER (WHERE input_data::text LIKE '%useRAG%true%') as rag_users,
+        COUNT(*) as total
+       FROM alrimjang.documents
+       WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'`
+    )
+
+    // 하트 사용 패턴 (심플하게)
+    const heartUsageResult = await pool.query(
+      `SELECT
+        COUNT(*) FILTER (WHERE action_type = 'generate') as generates,
+        COUNT(*) FILTER (WHERE action_type = 'refine') as refines,
+        COUNT(*) FILTER (WHERE ABS(hearts_used) >= 30) as rag_uses,
+        DATE(created_at) as date
+       FROM alrimjang.heart_usage_logs
+       WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+         AND action_type IN ('generate', 'refine')
+       GROUP BY DATE(created_at)
+       ORDER BY date DESC
+       LIMIT 7`
+    )
 
     // 일별 사용자 가입 추이 (최근 30일)
     const userGrowthResult = await pool.query(
@@ -88,16 +163,6 @@ export async function GET(req: NextRequest) {
        ORDER BY date ASC`
     )
     const userGrowth = userGrowthResult.rows
-
-    // 일별 문서 생성 추이 (최근 30일)
-    const documentGrowthResult = await pool.query(
-      `SELECT DATE(created_at) as date, COUNT(*) as count
-       FROM alrimjang.documents
-       WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
-       GROUP BY DATE(created_at)
-       ORDER BY date ASC`
-    )
-    const documentGrowth = documentGrowthResult.rows
 
     // 관리자 활동 로그
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || null
@@ -118,15 +183,18 @@ export async function GET(req: NextRequest) {
         totalDocuments,
         todayDocuments,
       },
-      hearts: {
-        totalEarned: totalHeartsEarned,
-        totalRemaining: totalHeartsRemaining,
-        totalUsed: totalHeartsUsed,
-      },
       documentTypes: documentTypeStats,
       growth: {
         users: userGrowth,
-        documents: documentGrowth,
+      },
+      // 인사이트 데이터
+      insights: {
+        dailyPatterns: dailyDocumentsResult.rows,
+        hourlyPattern: hourlyPatternResult.rows,
+        userBehavior: userBehaviorResult.rows[0] || {},
+        retention: retentionResult.rows[0] || {},
+        featureUsage: featureUsageResult.rows[0] || {},
+        heartUsagePattern: heartUsageResult.rows,
       },
     })
   } catch (error: unknown) {
