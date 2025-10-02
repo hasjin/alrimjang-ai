@@ -11,10 +11,12 @@ export default function Navigation() {
   const router = useRouter()
   const [hearts, setHearts] = useState<{ remaining: number; resetAt: string } | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (session) {
       fetchHearts()
+      checkAdminStatus()
     }
 
     const handleHeartsUpdate = () => {
@@ -37,6 +39,15 @@ export default function Navigation() {
     }
   }
 
+  const checkAdminStatus = async () => {
+    try {
+      const response = await fetch('/api/admin/stats')
+      setIsAdmin(response.ok)
+    } catch {
+      setIsAdmin(false)
+    }
+  }
+
   const navLinks = [
     { href: '/generate', label: '문서 생성' },
     { href: '/children', label: '원아 관리' },
@@ -44,6 +55,10 @@ export default function Navigation() {
     { href: '/guide', label: '사용 가이드' },
     { href: '/mypage', label: '마이페이지' },
   ]
+
+  if (isAdmin) {
+    navLinks.push({ href: '/admin', label: '🔧 관리자' })
+  }
 
   if (pathname === '/') return null
 
